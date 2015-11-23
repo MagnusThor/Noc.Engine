@@ -1,0 +1,94 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+</head>
+
+    <body>
+        <span id="timeLineLength"></span>|<span id="frameDuration"></span>
+        <input type="range" min="0" max="2" />
+        <canvas id="surface" width="720" height="405"></canvas>
+        <script>
+            var c = document.querySelector("#surface");
+            var ctx = c.getContext("2d");
+
+            var timeLine = [];
+
+            $(function() {
+                $("input").change(function() {
+                    halt = true;
+                    console.log($(this).val());
+                    render(timeLine[$(this).val()],0);
+                });
+            });
+
+
+            var worker = new Worker("assets/entity1.js");
+
+
+            worker.onmessage = function (e) {
+                timeLine.push(e.data);
+                $("#timeLineLength").text(timeLine.length);
+                $("input").prop("max", timeLine.length);
+            }
+            worker.postMessage({ d: "init", s: { x: 10, y: 100, i: 2 } }); // Start the worker.
+            var lag, frameDuration, previous, halt;
+            function gameLoop(timestamp) {
+                if (!halt)
+                    requestAnimationFrame(gameLoop);
+                if (!timestamp) timestamp = 0;
+                var elapsed = timestamp - previous;
+                if (elapsed > 1000) elapsed = frameDuration;
+                lag += elapsed;
+                while (lag >= frameDuration) {
+                    console.log("lag", lag, frameDuration);
+                    lag -= frameDuration;
+                }
+                var lagOffset = lag / frameDuration;
+                render(timeLine.pop(), lagOffset);
+
+                //Capture the current time to be used as the previous
+                //time in the next frame
+                previous = timestamp;
+                $("#frameDuration").text(elapsed.toFixed(2));
+              //  timeLine.shift();
+            }
+
+
+            var colors = ["Red", "Green", "Blue", "Yellow", "Brown", "Purple", "Black", "Marron"];
+
+            var render = function (e, lag) {
+                ctx.clearRect(0, 0, 720, 405);
+
+                if (!e) return;
+                var t = e.tt;
+                var avg_z = e.avg_z;
+                var faces = e.faces;
+
+
+                for (var i = 0; i < avg_z.length; i++) {
+                    var f = faces[avg_z[i].index];
+
+                    ctx.fillStyle = colors[i];
+                    ctx.beginPath();
+                    ctx.moveTo(t[f[0]].x, t[f[0]].y);
+                    ctx.lineTo(t[f[1]].x, t[f[1]].y);
+                    ctx.lineTo(t[f[2]].x, t[f[2]].y);
+                    ctx.lineTo(t[f[3]].x, t[f[3]].y);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+            };
+
+
+            gameLoop();
+
+
+        </script>
+
+
+    </body>
+
+</html>

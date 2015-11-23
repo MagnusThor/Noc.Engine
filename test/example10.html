@@ -1,0 +1,221 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Example 10</title>
+    <style>
+        canvas {
+            background: #000;
+            height: 100%;
+            width: 100%;
+        }
+
+        #wrapper {
+            height: 100%;
+            width: 100%;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        mark {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+        }
+    </style>
+
+</head>
+<body>
+    <div id="wrapper">
+        <canvas width="800" height="600" id="surface"></canvas>
+    </div>
+    <script src="../src/noc.engine.latest.js"></script>
+
+    <script>
+
+        var camera = {
+            fov: 8000,
+            d: 50
+        };
+
+
+        var tx = function(w,h) {
+            var c = document.createElement("canvas");
+            c.width = 400;
+            c.height = 400;
+            var ctx = c.getContext("2d");
+            var myGradient = ctx.createLinearGradient(0, 0, 0, 400);
+            myGradient.addColorStop(0, "black");
+            myGradient.addColorStop(1, "white");
+            ctx.fillStyle = myGradient;
+            ctx.fillRect(0, 0, 400, 400);
+            var image = new Image();
+            image.src = ctx.canvas.toDataURL("image/png");
+            return image;
+        }
+
+
+ 
+        function textureMap(ctx, texture, pts) {
+
+            var tris = [
+                [0, 1, 2], [0, 2, 3]
+                ];
+
+            for (var t = 0; t < 2; t++) {
+                var pp = tris[t];
+
+                var x0 = pts[pp[0]].x, x1 = pts[pp[1]].x, x2 = pts[pp[2]].x;
+                var y0 = pts[pp[0]].y, y1 = pts[pp[1]].y, y2 = pts[pp[2]].y;
+
+                var u0 = pts[pp[0]].u, u1 = pts[pp[1]].u, u2 = pts[pp[2]].u;
+                var v0 = pts[pp[0]].v, v1 = pts[pp[1]].v, v2 = pts[pp[2]].v;
+
+
+
+                ctx.save(); ctx.beginPath();
+
+              
+                ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+               
+                ctx.lineTo(x2, y2); ctx.closePath(); ctx.clip();
+
+
+                var delta = u0 * v1 + v0 * u2 + u1 * v2 - v1 * u2 - v0 * u1 - u0 * v2;
+
+                var deltaA = x0 * v1 + v0 * x2 + x1 * v2 - v1 * x2 - v0 * x1 - x0 * v2;
+                var deltaB = u0 * x1 + x0 * u2 + u1 * x2 - x1 * u2 - x0 * u1 - u0 * x2;
+                var deltaC = u0 * v1 * x2 + v0 * x1 * u2 + x0 * u1 * v2 - x0 * v1 * u2
+                    - v0 * u1 * x2 - u0 * x1 * v2;
+
+                var deltaD = y0 * v1 + v0 * y2 + y1 * v2 - v1 * y2 - v0 * y1 - y0 * v2;
+                var deltaE = u0 * y1 + y0 * u2 + u1 * y2 - y1 * u2 - y0 * u1 - u0 * y2;
+
+                var deltaF = u0 * v1 * y2 + v0 * y1 * u2 + y0 * u1 * v2 - y0 * v1 * u2
+                    - v0 * u1 * y2 - u0 * y1 * v2;
+
+
+                ctx.transform(deltaA / delta, deltaD / delta,
+                    deltaB / delta, deltaE / delta,
+                    deltaC / delta, deltaF / delta);
+
+              
+                ctx.drawImage(texture, 0, 0);
+
+
+               
+
+                ctx.restore();
+            }
+        }
+
+
+        var vertices = [];
+
+        var angle = 0;
+
+
+        //{x:-1, y:-1, z: 0, u:0, v:0},
+        //{x: 1, y:-1, z: 0, u:im_width, v:0},
+        //{x: 1, y: 1, z: 0, u:im_width, v:im_height},
+        //{x:-1, y: 1, z: 0, u:0, v:im_height}
+
+        vertices.push(new Noc.Point3D(-1, -1, 0,0,0)); // 0
+        vertices.push(new Noc.Point3D(1, -1, 0, 400, 0)); // 1
+        vertices.push(new Noc.Point3D(1, 1, 0, 400, 400));
+        vertices.push(new Noc.Point3D(-1, 1, 0,0,400));
+      
+
+
+        var engine, faces, ent, assets;
+        document.addEventListener("DOMContentLoaded", function () {
+
+
+            assets = new Noc.Assets({
+                images: ["/test/assets/texture2.jpg"]
+            });
+
+            faces = [
+                [0, 1],
+                [1, 2],
+                [2, 3],
+                [3, 0]
+            ];
+
+            engine = new Noc.Engine("#surface", null, $("#wrapper"));
+
+
+            ent = new Noc.Entity("f", function(renderer) {
+                var ctx = renderer.ctx;
+                var state = this.state;
+                var projected = [];
+
+                var vertices = state.vertices;
+
+                for (var i = 0; i < vertices.length; i++) {
+                    var v = vertices[i];
+                    var r = v.rotateX(state.angle).rotateY(state.angle).rotateZ(state.angle);
+                    var pr = r.project(renderer.width/2, renderer.height/2, camera.fov,camera.d );
+                    projected.push(pr);
+                };
+
+
+                ctx.strokeStyle = "red";
+                ctx.fillStyle = "white";
+                // draw polygon
+                for (var j = 0; j < projected.length; j = +4) {
+
+
+                    ctx.beginPath();
+
+                    ctx.moveTo(projected[j].x, projected[j].y);
+
+                    ctx.lineTo(projected[j + 1].x, projected[j + 1].y);
+                    ctx.lineTo(projected[j + 2].x, projected[j + 2].y);
+                    ctx.lineTo(projected[j + 3].x, projected[j + 3].y);
+                    ctx.lineTo(projected[0].x, projected[0].y);
+
+                  
+                   
+                    
+
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.closePath();
+
+                      textureMap(ctx, state.texture, projected);
+
+                };
+
+              
+                state.angle += 0.4;
+
+            }).setState({
+                angle:0,
+                vertices: vertices,
+                texture: assets.getImage("/test/assets/texture2.jpg")
+            });
+
+
+            engine.addEntity(ent);
+
+            engine.start();
+
+        });
+
+        window.onerror = function (err) {
+
+            engine.start();
+        };
+
+    </script>
+
+
+
+
+</body>
+</html>

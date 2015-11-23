@@ -1,0 +1,380 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+</head>
+<body>
+    
+    <canvas id="c" width="800" height="600"></canvas>
+    <script>
+        
+        c = document.getElementById("c");
+        H = c.getContext("2d");
+        X = c.width / 2;
+        Y = c.height / 2;
+        ns = 8;
+        nt = 5;
+        SS = 24;
+        TT = 16;
+        o = document.getElementById("x");
+       
+        function c2(a) {
+            a >>= 0;
+            return a < 0 ? 0 : a > 255 ? 255 : a
+        }
+        rs = 6502;
+
+        function rr() {
+            rs = rs * 69069 + 1 & 65535;
+            return rs / 65535
+        }
+
+        function tx() {
+            mc = document.createElement("canvas");
+            mc.width = mc.height = 256;
+            ct = mc.getContext("2d");
+            id = ct.getImageData(0, 0, 256, 256);
+            I = id.data
+        }
+
+        function G(a, b, i) {
+            tx();
+            for (var f = 0; f < 256; f++)
+                for (var d = 0; d < 256; d++) {
+                    var e = (f - 128.5) / 127,
+                        g = (d - 128.5) / 127,
+                        h = 1 - g * g - e * e;
+                    if (h > 0) {
+                        var j = Math.sqrt(h),
+                            k = -2 * j * g,
+                            l = -2 * j * e,
+                            m = -h,
+                            n = Math.sqrt(k * k + l * l + m * m);
+                        k /= n;
+                        l /= n;
+                        m /= n;
+                        n = -m * 0.57735 + l * 0.57735 + k * 0.57735;
+                        n = n < 0 ? 0 : Math.exp(Math.log(n) * 280) * 3;
+                        if (l < 0) {
+                            n = 16 / (0.1 - l);
+                            n = !(k * n + 1000.5 & 7) | !(m * n + 1000.5 & 7) ? l * l * h : 0
+                        }
+                        e = (-e * 0.707 - g * 0.707 + j * 0.707) / 1.5;
+                        e = e < 0 ? 0 : e * e;
+                        h = n + e + h / 5 + 0.25;
+                        e = (f * 256 + d) * 4;
+                        I[e] = c2(a * h);
+                        I[e + 1] = c2(b * h);
+                        I[e + 2] = c2(i * h);
+                        I[e + 3] = 255
+                    }
+                }
+            ct.putImageData(id, 0, 0);
+            return mc
+        }
+
+        function E() {
+            for (var a = [128], b = 256, i = 256; b > 1;) {
+                for (var f = b >> 1, d = 0; d < 256; d += b)
+                    for (var e = d + b & 255, g = 0; g < 256; g += b) {
+                        var h = g + b & 255,
+                            j = a[d * 256 + g],
+                            k = a[d * 256 + h],
+                            l = a[e * 256 + g];
+                        h = a[e * 256 + h];
+                        a[d * 256 + (g + f)] = c2((j + k) / 2 + (rr() - 0.5) * i);
+                        a[(d + f) * 256 + g] = c2((j + l) / 2 + (rr() - 0.5) * i);
+                        a[(d + f) * 256 + (g + f)] = c2((j + k + l + h) / 4 + (rr() - 0.5) * i * 1.4142)
+                    }
+                b = f;
+                i *= 0.6
+            }
+            tx();
+            b = rr() * 65535;
+            f = rr() * 65535;
+            for (d = 0; d < 256; d++)
+                for (e = 0; e < 256; e++) {
+                    g = (d * 256 + e) * 4;
+                    i = d * 256 + e;
+                    I[g] = a[i];
+                    I[g + 1] = a[i + b & 65535];
+                    I[g + 2] = a[i + f & 65535];
+                    I[g + 3] = 255
+                }
+            ct.putImageData(id, 0, 0);
+            return mc
+        }
+
+        function mT(a, b, i, f) {
+            x = [];
+            y = [];
+            z = [];
+            u = [];
+            v = [];
+            nx = [];
+            ny = [];
+            nz = [];
+            for (var d = 0; d <= i; d++)
+                for (var e = 2 * Math.PI * d / i, g = a * Math.cos(e), h = a * Math.sin(e), j = 0; j <= f; j++) {
+                    var k = 2 * Math.PI * j / f,
+                        l = b * Math.cos(k),
+                        m = b * Math.sin(k);
+                    x.push(g + m * Math.cos(e));
+                    y.push(0 + l);
+                    z.push(h + m * Math.sin(e));
+                    u.push(d * 254 / i + 1);
+                    v.push(j * 254 / f + 1);
+                    nx.push(Math.sin(k) * Math.cos(e));
+                    ny.push(Math.cos(k));
+                    nz.push(Math.sin(k) * Math.sin(e))
+                }
+            Q = [];
+            for (d = 0; d < i; d++) {
+                a = d + 1;
+                for (j = 0; j < f; j++) {
+                    b = j + 1;
+                    Q.push([d * (f + 1) + j, d * (f + 1) + b, a * (f + 1) + b, a * (f + 1) + j])
+                }
+            }
+        }
+
+        function tp(a) {
+            xs = [];
+            ys = [];
+            zs = [];
+            for (var b = 0, i = x.length; b < i; b++) {
+                var f = zs[b] = a[2] * x[b] + a[5] * y[b] + a[8] * z[b] + a[11];
+                xs[b] = X + (a[0] * x[b] + a[3] * y[b] + a[6] * z[b] + a[9]) / f;
+                ys[b] = Y + (a[1] * x[b] + a[4] * y[b] + a[7] * z[b] + a[10]) / f
+            }
+        }
+
+        function tn(a) {
+            nxs = [];
+            nys = [];
+            nzs = [];
+            for (var b = 0, i = x.length; b < i; b++) {
+                nxs[b] = a[0] * nx[b] + a[3] * ny[b] + a[6] * nz[b];
+                nys[b] = a[1] * nx[b] + a[4] * ny[b] + a[7] * nz[b];
+                nzs[b] = a[2] * nx[b] + a[5] * ny[b] + a[8] * nz[b]
+            }
+        }
+
+        function L(a) {
+            a = nzs[a] * nzs[a] * 63;
+            return a < 0 ? 0 : a > 63 ? 63 : a >> 0
+        }
+
+        function U(a) {
+            var b = a.length - 1;
+            H.beginPath();
+            for (H.moveTo(xs[a[b]], ys[a[b]]) ; b--;) H.lineTo(xs[a[b]], ys[a[b]]);
+            H.closePath()
+        }
+
+        function tf(a, b, i, f) {
+            a = [
+                [Q[a][0], Q[a][1], Q[a][2]],
+                [Q[a][2], Q[a][3], Q[a][0]]
+            ];
+            for (var d = 0; d < 2; d++) {
+                var e = a[d];
+                H.save();
+                U(e);
+                H.clip();
+                var g = i(e[0]),
+                    h = f(e[0]),
+                    j = xs[e[0]],
+                    k = ys[e[0]],
+                    l = i(e[1]),
+                    m = f(e[1]),
+                    n = xs[e[1]],
+                    r = ys[e[1]],
+                    p = i(e[2]),
+                    q = f(e[2]),
+                    s = xs[e[2]];
+                e = ys[e[2]];
+                var t = g * m + h * p + l * q - m * p - h * l - g * q;
+                H.transform((j * m + h * s + n * q - m * s - h * n - j * q) / t, (k * m + h * e + r * q - m * e - h * r - k * q) / t, (g * n + j * p + l * s - n * p - j * l - g * s) / t, (g * r + k * p + l * e - r * p - k * l - g * e) / t, (g * m * s + h * n * p + j * l * q - j * m * p - h * l * s - g * n * q) / t, (g * m * e + h * r * p + k * l * q - k * m * p - h * l * e - g * r * q) / t);
+                H.drawImage(b,
+                    0, 0);
+                H.restore()
+            }
+        }
+        ff = [function (a) {
+            U(Q[a]);
+            H.stroke()
+        }, function (a) {
+            U(Q[a]);
+            H.fillStyle = "#000000";
+            H.fill();
+            H.stroke()
+        }, function (a) {
+            U(Q[a]);
+            var b = L(Q[a][0]);
+            a = (a ^ a >> 4) & 2 ? 1 : 7;
+            H.fillStyle = "rgb(" + (a & 1) * b * 4 + "," + (a & 2) * b * 2 + "," + (a & 4) * b + ")";
+            H.fill()
+        }, function (a) {
+            var b, i = [
+                [Q[a][0], Q[a][1], Q[a][2]],
+                [Q[a][2], Q[a][3], Q[a][0]]
+            ];
+            a = (a ^ a >> 4) & 2 ? 1 : 7;
+            for (var f = 0; f < 2; f++) {
+                var d = i[f];
+                U(d);
+                var e = L(d[0]),
+                    g = L(d[1]),
+                    h = L(d[2]);
+                if (e > g) {
+                    b = e;
+                    e = g;
+                    g = b;
+                    b = d[0];
+                    d[0] = d[1];
+                    d[1] = b
+                }
+                if (e > h) {
+                    b = e;
+                    e = h;
+                    h = b;
+                    b = d[0];
+                    d[0] = d[2];
+                    d[2] = b
+                }
+                if (g > h) {
+                    b = g;
+                    g = h;
+                    h = b;
+                    b = d[1];
+                    d[1] =
+                        d[2];
+                    d[2] = b
+                }
+                if (e == h) H.fillStyle = "rgb(" + (a & 1) * e * 4 + "," + (a & 2) * e * 2 + "," + (a & 4) * e + ")";
+                else {
+                    b = xs[d[0]];
+                    var j = ys[d[0]],
+                        k = xs[d[2]],
+                        l = ys[d[2]],
+                        m = (g - e) / (h - e);
+                    g = j + m * (l - j) - ys[d[1]];
+                    d = xs[d[1]] - (b + m * (k - b));
+                    m = 1 / Math.sqrt(g * g + d * d);
+                    g *= m;
+                    d *= m;
+                    k = (k - b) * g + (l - j) * d;
+                    b = H.createLinearGradient(b, j, b + k * g, j + k * d);
+                    b.addColorStop(0, "rgb(" + (a & 1) * e * 4 + "," + (a & 2) * e * 2 + "," + (a & 4) * e + ")");
+                    b.addColorStop(1, "rgb(" + (a & 1) * h * 4 + "," + (a & 2) * h * 2 + "," + (a & 4) * h + ")");
+                    H.fillStyle = b
+                }
+                H.fill()
+            }
+        }, function (a) {
+            tf(a, ee, function (b) {
+                return u[b]
+            }, function (b) {
+                return v[b]
+            })
+        },
+            function (a) {
+                tf(a, (a ^ a >> 4) & 2 ? rg : wg, function (b) {
+                    return 128 + 127 * nxs[b] + rr() - 0.5
+                }, function (b) {
+                    return 128 + 127 * nys[b] + rr() - 0.5
+                })
+            },
+            function (a) {
+                ff[a * 6 / Q.length | 0](a)
+            }
+        ];
+
+        function M(a, b) {
+            for (var i = [], f = 0; f < 12; f += 3)
+                for (var d = 0; d < 3; d++) {
+                    var e = a[f] * b[d] + a[f + 1] * b[d + 3] + a[f + 2] * b[d + 6];
+                    if (f == 9) e += b[9 + d];
+                    i.push(e)
+                }
+            return i
+        }
+        var V = (new Date).getTime(),
+            last = 0;
+        ee = E();
+        rg = G(255, 128, 128);
+        wg = G(128, 128, 128);
+        setInterval(function () {
+
+
+            var a = (new Date).getTime();
+            if (!(a - V > 84E3)) {
+                var b = (a - V) / 500,
+                    i = b * 0.2,
+                    f = Math.cos(i),
+                    d = Math.sin(i);
+                i = b * 0.3;
+                var e = Math.cos(i),
+                    g = Math.sin(i);
+                i = b * 0.5;
+                var h = Math.cos(i),
+                    j = Math.sin(i);
+                b = b * 1.7;
+                h = [h, j, 0, -j, h, 0, 0, 0, 1, 0, 0, 0];
+                b = [1, 0, 0, 0, 1, 0, 0, 0, 1, 100 * Math.cos(b), 100 * Math.sin(b), 0];
+                b = M(M(M([1, 0, 0, 0, f, d, 0, -d, f, 0, 0, 0], [e, 0, g, 0, 1, 0, -g, 0, e, 0, 0, 0]), h), b);
+                H.fillStyle = "#ff000";
+                H.fillRect(0, 0, c.width, c.height);
+                if (!last) {
+                    last = a + 11E3;
+                    mT(X * 1.2, X * 0.4, ns, nt)
+                }
+                if (a > last + 50 && (ns < SS || nt < TT)) {
+                    last = a;
+                    ns < SS &&
+                        ns++;
+                    nt < TT && nt++;
+                    mT(X * 1.2, X * 0.4, ns, nt)
+                }
+
+                tp(M(b, [800, 0, 0, 0, 800, 0, 0, 0, 1, 0, 0, 1600]));
+                tn(b);
+                b = [];
+                f = 0;
+                for (d = Q.length; f < d; f++) b.push([zs[Q[f][0]] + zs[Q[f][1]] + zs[Q[f][2]] + zs[Q[f][3]], f]);
+                b.sort(function (k, l) {
+                    return k[0] - l[0]
+                });
+                H.fillStyle = "#000000";
+                H.strokeStyle = "#40FF40";
+                H.lineWidth = 2;
+                d = ff[Math.max(0, Math.min(a - V - 11E3 >> 13, 6))];
+                for (f = b.length - 1; f >= 0; f--) d(b[f][1]);
+                H.fillStyle = "#FFFFFF";
+                H.beginPath();
+                d = (a - V) / 2E3;
+                if (d > 38) d = Math.max(0, 3 - (d - 38));
+                if (d < 3) {
+                    for (f = 0; f <= 10; f++) {
+                        b = -i * 3 + f * 2 * Math.PI / 10;
+                        g = d * X / (1 + (f & 1));
+                        e = X + g * Math.cos(b);
+                        b = Y + g * Math.sin(b);
+                        f == 0 ? H.moveTo(e, b) : H.lineTo(e, b)
+                    }
+                    H.moveTo(0, 0);
+                    H.lineTo(0, Y * 2);
+                    H.lineTo(X * 2, Y * 2);
+                    H.lineTo(X * 2, 0);
+                    H.fill()
+                }
+                a = (a - V) / 4E3 >> 0;
+               
+            }
+        }, 1);
+
+    </script>
+
+</body>
+</html>

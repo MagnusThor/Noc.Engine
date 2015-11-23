@@ -1,0 +1,114 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <title>Example 6</title>
+    <style>
+        body,
+        html {
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        #wrapper {
+            padding: 10px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="wrapper">
+        <canvas id="surface" width="1440" height="720"></canvas>
+    </div>
+    <script>
+        window.onerror = function (err) {
+            console.log(err);
+            engine.start();
+        };
+
+        var engine;
+        document.addEventListener("DOMContentLoaded", function () {
+
+            $("#surface").addEventListener("mousemove", function (evt) {
+
+                // when mouse moves on canvas, modify x,y coordinates of the "blue" entity
+
+                blue.state.x = evt.offsetX;
+                blue.state.y = evt.offsetY;
+
+            });
+
+            // set up an engine, draw on surface, null for the world,
+            // wrapper is the placeholder for the canvas.
+            engine = new Noc.Engine("#surface", null, $("#wrapper"));
+
+            var red = new Noc.Entity("rectangle1", function (r) {
+                // r is the render
+                var ctx = r.ctx; // get the 2d context from the renderer
+                var state = this.state; // get the render state (see init object below )
+                // draw a rectangle based on the state x,y,w,h, and the  set the color to state.color
+                ctx.fillStyle = state.color;
+                ctx.fillRect(state.x, state.y, state.w, state.h);
+            }).init(
+			{
+			    x: 100,
+			    y: 100,
+			    w: 100,
+			    h: 100,
+			    color: "#ff0000"
+			}).setType("red");
+
+            var blue = new Noc.Entity("rectangle2", function (r) {
+                // r is the render
+                var ctx = r.ctx; // get the 2d context from the renderer
+                var state = this.state; // get the render state (see init object below )
+
+                // draw a rectangle based on the state x,y,w,h, and the set the color to state.color, if the entity 'collided' set set
+                // an another color.
+
+                ctx.fillStyle = !this.collided ? state.color : "#00ff00";
+                ctx.fillRect(state.x, state.y, state.w, state.h);
+            }).init(
+			{
+			    x: 200,
+			    y: 150,
+			    w: 100,
+			    h: 100,
+			    color: "#0000ff"
+			}).setType("blue").setCollitionDetector("rectangularDetection");
+
+            // **** define a collition detection for blue > red
+
+            // blue collides with red
+            blue.collidesWith.push("red");
+
+            //blue.collitionExpression = function () {
+            // return this.state;
+            // }
+            //red.collitionExpression = function() {
+            //    return this.state;
+            //}
+
+            // add the rectangles to the canvas ( renderer )
+            engine.addEntities(blue, red);
+
+            engine.start();
+
+        });
+    </script>
+
+    <script src="../src/noc.engine.latest.js"></script>
+
+
+    <script>
+    </script>
+
+</body>
+
+</html>

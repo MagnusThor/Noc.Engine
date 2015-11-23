@@ -1,0 +1,238 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Noc.Engine example 1 </title>
+
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background: #000000;
+            overflow: hidden;
+        }
+
+        mark#fps {
+            position: absolute;
+            z-index: 1020;
+            left: 10px;
+            top: 10px;
+        }
+        #wrapper {
+            position: absolute;
+               left: 0;
+            top: 0;
+            width: 800px;
+            height: 600px;
+        }
+
+        canvas#surface {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 800px;
+            height: 600px;
+         
+        }
+    </style>
+</head>
+<body>
+    <mark id="fps"></mark>
+    <div style="text-align: center" id="wrapper">
+     
+            <canvas id="surface" width="800" height="600"></canvas>
+    
+    </div>
+    <script src="../src/noc.engine.latest.js"></script>
+    <script>
+
+
+        var Game = {};
+
+        Game.controls = {
+            left: false,
+            up: false,
+            right: false,
+            down: false,
+        };
+
+        window.addEventListener("keydown", function (e) {
+            switch (e.keyCode) {
+                case 37:
+                    Game.controls.left = true;
+                    break;
+                case 38:
+                    Game.controls.up = true;
+                    break;
+                case 39: 
+                    Game.controls.right = true;
+                    break;
+                case 40:
+                    Game.controls.down = true;
+                    break;
+            }
+        }, false);
+
+        window.addEventListener("keyup", function (e) {
+            switch (e.keyCode) {
+                case 37: 
+                    Game.controls.left = false;
+                    break;
+                case 38: 
+                    Game.controls.up = false;
+                    break;
+                case 39: 
+                    Game.controls.right = false;
+                    break;
+                case 40: 
+                    Game.controls.down = false;
+                    break;
+            }
+        }, false);
+
+
+
+        window.onerror = function (err) {
+            engine.start();
+        };
+        var world = {
+            width: 5000,
+            height: 3000
+        }
+        var engine = new Noc.Engine("#surface", world, $("#wrapper"));
+
+        var renderTexture = function (w, h) {
+            var randomColor = function () {
+                return '#' + Math.floor(Math.random() * 16777215).toString(16);
+            }
+            var ctx = document.createElement("canvas").getContext("2d");
+            ctx.canvas.width = w;
+            ctx.canvas.height = h;
+            var rows = ~~(w / 24) + 1;
+            var columns = ~~(h / 24) + 1;
+
+            ctx.save();
+            ctx.fillStyle = randomColor();
+
+            for (var x = 0, i = 0; i < rows; x += 24, i++) {
+
+                for (var y = 0, j = 0; j < columns; y += 24, j++) {
+                    ctx.beginPath();
+                    ctx.rect(x, y, 20, 20);
+                    ctx.fillStyle = randomColor();
+                    ctx.fill();
+                    ctx.closePath();
+                }
+
+
+            }
+            ctx.restore();
+            var image = new Image();
+            image.src = ctx.canvas.toDataURL("image/png");
+            return image;
+        }
+
+        var player = new Noc.Entity("player", function () {
+
+            var args = arguments;
+
+            var state = this.state;
+
+            var context = args[0].ctx;
+            var step = state.v;
+
+            if (Game.controls.left)
+                state.x -= state.speed * step;
+            if (Game.controls.up)
+                state.y -= state.speed * step;
+            if (Game.controls.right)
+                state.x += state.speed * step;
+            if (Game.controls.down)
+                state.y += state.speed * step;
+
+            if (state.x - state.width / 2 < 0) {
+                state.x = state.width / 2;
+            }
+            if (state.y - state.height / 2 < 0) {
+                state.y = state.height / 2;
+            }
+            if (state.x + state.width / 2 >  world.width) {
+                state.x = world.width - state.width / 2;
+            }
+            if (state.y + state.height / 2 > world.height) {
+                state.y = world.height - state.height / 2;
+            }
+            context.save();
+            context.fillStyle = "yellow";
+          
+            context.fillRect(
+                (state.x - state.width / 2) - state.camera.xView,
+                (state.y - state.height / 2) - state.camera.yView,
+                state.width,
+                state.height);
+            context.restore();
+
+        }).init({
+            v: 0.043,
+            x: engine.world.width / 2,
+            y: 4800,
+            width: 50,
+            height: 50,
+            speed: 200,
+            camera: engine.camera
+        });
+
+        var map = new Noc.Entity("map", function (p) {
+
+            var state = this.state;
+            var context = p.ctx;
+            var sx, sy, dx, dy;
+            var sWidth, sHeight, dWidth, dHeight;
+
+            sx = state.camera.xView;
+            sy = state.camera.yView;
+
+            sWidth = context.canvas.width;
+            sHeight = context.canvas.height;
+
+
+            if (state.image.width - sx < sWidth) {
+                sWidth = state.image.width - sx;
+            }
+            if (state.image.height - sy < sHeight) {
+                sHeight = state.image.height - sy;
+            }
+            dx = 0;
+            dy = 0;
+            dWidth = sWidth;
+            dHeight = sHeight;
+
+            context.drawImage(state.image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+
+
+        }).init(
+        {
+            image: renderTexture(world.width, world.height),
+            camera: engine.camera
+        });
+
+        engine.onFrame = function (time, fps) {
+            $("#fps").textContent = this.fps.current();
+           
+        };
+
+        engine.addEntity(map);
+        engine.addEntity(player);
+
+        document.addEventListener("DOMContentLoaded", function () {
+            engine.camera.follow(player.state);
+            engine.start(); // start the engine
+
+
+
+        });
+
+
+    </script>
+</body>
+</html>
