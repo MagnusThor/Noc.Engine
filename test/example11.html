@@ -217,18 +217,18 @@
                     var x0 = p[0].x, y0  =p[0].y, x1 = p[1].x, y1  = p[1].y, x2 = p[2].x, y2  = p[2].y;
 
 
-                    context.save();
-                    context.beginPath();
-                    context.lineWidth = 1;
-                    context.moveTo(x0,y0);
-                    context.lineTo(x1,y1);
-                    context.lineTo(x2,y2);
-                    context.closePath();
-                    context.stroke();
-                    context.restore();
+                    //context.save();
+                    //context.beginPath();
+                    //context.lineWidth = 1;
+                    //context.moveTo(x0,y0);
+                    //context.lineTo(x1,y1);
+                    //context.lineTo(x2,y2);
+                    //context.closePath();
+                    //context.stroke();
+                    //context.restore();
 
-                    //drawTexturedTriangle(context,tx, x0, y0, x1, y1, x2, y2,
-                    //    0, 0, 0, 1, 1, 1);
+                    drawTexturedTriangle(context,tx, x0, y0, x1, y1, x2, y2,
+                        0, 0, 0, 1, 1, 1);
 
 
                 }
