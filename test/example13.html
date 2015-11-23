@@ -1,0 +1,137 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <style>
+        body {
+            padding: 0;
+            overflow: hidden;
+        }
+         #wrapp {
+             width: 100%;
+             height: 100%
+         }
+        canvas {
+            background: #000000;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="wrapp">
+        <canvas id="surface" width="1440" height="600"></canvas>
+    </div>
+    <pre id="debug"></pre>
+    <script src="../src/noc.engine.latest.js"></script>
+    <script>
+
+
+        var FractalTree = (function () {
+            var ctor = function () {
+                this.settings = {
+                    loss: 0.004, 
+                    minSleep: 20, 
+                    branchLoss: 0.8, 
+                    mainLoss: 0.8, 
+                    speed: 0.4, 
+                    newBranch: 0.3, 
+                    treeColor: '#ffffff',
+                };
+            };
+            ctor.prototype.generate = function(arr, x, y, dx, dy, w, growthRate, lifetime, branchColor,a) {
+                var self = this;
+                var o = new O();
+                o.x1 = x;
+                o.y1 = y;
+                o.w = w - lifetime * this.settings.loss;
+                x = x + dx;
+                y = y + dy;
+                dx = dx + Math.sin(Math.random() + lifetime) * this.settings.speed;
+                dy = dy + Math.cos(Math.random() + lifetime) * this.settings.speed;
+                if (w < 6 && y > 600 - Math.random() * (0.3 * 600)) w = w * 0.8;
+                o.x2 = x;
+                o.y2 = y;
+                o.s = branchColor || this.settings.treeColor;
+                if (lifetime > 5 * w + Math.random() * 100 && Math.random() > this.settings.newBranch) {
+                    o.c = (2 * growthRate * Math.random() + self.settings.minSleep);
+                    arr.push(o);
+                    self.generate(arr, x, y, 2 * Math.sin(Math.random() + lifetime), 2 * Math.cos(Math.random() + lifetime), (w - lifetime * self.settings.loss) * self.settings.branchLoss, growthRate + Math.random() * 100, 0, branchColor);
+                    w *= self.settings.mainLoss;
+                }
+
+                if (w - lifetime * this.settings.loss >= 1) {
+                    arr.push(o);
+                    o.c = (growthRate);
+                    self.generate(arr, x, y, dx, dy, w, growthRate, ++lifetime, branchColor);
+                }
+                return arr;
+            };
+            return ctor;
+
+        })();
+
+        var O = (function () {
+
+            var ctor = function(x1,y1,x2,y2,w,s,c) {
+                this.x1 = x1;
+                this.y2 = y2;
+                this.x2 = x2;
+                this.y2 = y2;
+                this.w = w;
+                this.s = s;
+                this.c = c;
+            };
+            return ctor;
+
+        })();
+
+
+        var engine, assets;
+        document.addEventListener("DOMContentLoaded", function () {
+            engine = new Noc.Engine("#surface", null, document.querySelector("#wrap"));
+            var tree = new Noc.Entity("tree", function (frame,f,ts) {
+                var state = this.state;
+                var ctx = frame.ctx;
+                var linesToDraw = state.fractal.filter(function (pre) {
+                    return pre.c < ts;
+
+                });
+                for (var i = 0; i < linesToDraw.length; i++) {
+                    var p = linesToDraw[i];
+                    ctx.lineWidth = p.w;
+                    ctx.beginPath();
+                    ctx.moveTo(p.x1, p.y1);
+                    ctx.strokeStyle = p.s;
+                    ctx.lineTo(p.x2, p.y2);
+                    ctx.stroke();
+                    this.state.drawn++;
+                    if (this.state.drawn === state.fractal.length) {
+                        console.log("completed");
+                      
+                    }
+                }
+               
+
+              
+
+            }).setState({
+                drawn: 0,
+                fractal: new FractalTree().generate([], 1440 / 2, 300, 0, -1, 10, 30, 0, "#fff")
+            });
+
+            setInterval(function () {
+                console.log("..");
+                var f = '#' + Math.round(0xffffff * Math.random()).toString(16);
+
+                engine.entities.first().state.fractal =
+                    new FractalTree().generate([], 1440 / 2, 300, 0, -1, 10, 30, 0, "#fff");
+            }, 4000);
+
+            engine.addEntities(tree);
+            engine.start();
+        });
+
+    </script>
+</body>
+</html>

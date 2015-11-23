@@ -1,0 +1,125 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Noc.Engine example 5 </title>
+    
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background: #000000;
+            overflow: hidden;
+        }
+
+        mark#fps {
+            position: absolute;
+            z-index: 1020;
+            left: 10px;
+            top: 10px
+        }
+
+        canvas#surface {
+            position: absolute;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+          
+            border: 2px solid #000080;
+        }
+    </style>
+</head>
+    <body>
+        <mark id="fps"></mark>
+        <canvas id="surface" width="1440" height="720"></canvas>
+        <script src="../src/noc.engine.latest.js"></script>
+        <script>
+
+            var vertices = [
+                    new Noc.Point3D(-1, 1, -1),
+                    new Noc.Point3D(1, 1, -1),
+                    new Noc.Point3D(1, -1, -1),
+                    new Noc.Point3D(-1, -1, -1),
+                    new Noc.Point3D(-1, 1, 1),
+                    new Noc.Point3D(1, 1, 1),
+                    new Noc.Point3D(1, -1, 1),
+                    new Noc.Point3D(-1, -1, 1)
+            ];
+
+           
+            var faces = [[0, 1, 2, 3], [1, 5, 6, 2], [5, 4, 7, 6], [4, 0, 3, 7], [0, 4, 5, 1], [3, 2, 6, 7]];
+
+           
+            var randomColor = function () {
+                return '#' + Math.floor(Math.random() * 16777215).toString(16);
+            }
+
+        
+            var engine = new Noc.Engine("#surface");
+
+        
+            engine.onFrame = function(time,fps) {
+                $("#fps").textContent = this.fps.current();
+            };
+
+            var angle  = 45;
+            var cube = new Noc.Entity("cube", function (obj) {
+
+
+                var ctx = obj.ctx;
+                var t = new Array();
+
+                var xy = [];
+
+                for (var i = 0; i < vertices.length; i++) {
+                    var v = vertices[i];
+                    var r = v.rotateX(angle).rotateY(angle);
+                    var p = r.project(1400 , 720 , 500, 3);
+                    t.push(p);
+                   
+                }
+
+
+                var avg_z = [];
+
+                for (var i = 0; i < faces.length; i++) {
+                    var f = faces[i];
+                    avg_z[i] = { "index": i, "z": (t[f[0]].z + t[f[1]].z + t[f[2]].z + t[f[3]].z) / 4.0 };
+                };
+
+                avg_z.sort(function (a, b) {
+                    return b.z - a.z;
+                });
+
+
+                for (var i = 0; i < faces.length; i++) {
+                    var f = faces[avg_z[i].index];
+
+                    ctx.fillStyle = "rgb(255,0,0)";
+                    ctx.beginPath();
+                    ctx.moveTo(t[f[0]].x, t[f[0]].y);
+                    ctx.lineTo(t[f[1]].x, t[f[1]].y);
+                    ctx.lineTo(t[f[2]].x, t[f[2]].y);
+                    ctx.lineTo(t[f[3]].x, t[f[3]].y);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                angle += 0.5;
+
+            });
+       
+
+          
+
+            document.addEventListener("DOMContentLoaded", function () {
+                engine.addEntity(cube);
+                engine.start(); // start the engine
+
+            });
+
+
+        </script>
+    </body>
+</html>

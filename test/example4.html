@@ -1,0 +1,58 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+</head>
+    <body>
+        
+        <canvas id="surface" width="640" height="56"></canvas>
+        
+
+        <script src="/src/noc.engine.latest.js"></script>
+        
+
+        
+        <script>
+
+            var engine; 
+            var renderTexture = function (w, h) {
+                var randomColor = function () {
+                    return '#' + Math.floor(Math.random() * 16777215).toString(16);
+                }
+                var ctx = document.createElement("canvas").getContext("2d");
+                ctx.canvas.width = w;
+                ctx.canvas.height = h;
+                var rows = ~~(w / 24) + 1;
+                var columns = ~~(h / 24) + 1;
+
+                ctx.save();
+                ctx.fillStyle = randomColor();
+
+                for (var x = 0, i = 0; i < rows; x += 24, i++) {
+
+                    for (var y = 0, j = 0; j < columns; y += 24, j++) {
+                        ctx.beginPath();
+                        ctx.rect(x, y, 20, 20);
+                        ctx.fillStyle = randomColor();
+                        ctx.fill();
+                        ctx.closePath();
+                    }
+
+
+                }
+                ctx.restore();
+                var image = new Image();
+                image.src = ctx.canvas.toDataURL("image/png");
+                return image;
+            }
+
+           
+
+            document.addEventListener("DOMContentLoaded", function() {
+
+            });
+
+        </script>
+
+    </body>
+</html>

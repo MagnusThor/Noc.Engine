@@ -1,0 +1,109 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Noc.Engine example 1 </title>
+    
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background: #000000;
+            overflow: hidden;
+        }
+
+        mark#fps {
+            position: absolute;
+            z-index: 1020;
+            left: 10px;
+            top: 10px
+        }
+
+        canvas#surface {
+            position: absolute;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+          
+            border: 2px solid #000080;
+        }
+    </style>
+</head>
+    <body>
+        <mark id="fps"></mark>
+        <canvas id="surface" width="1440" height="720"></canvas>
+        <script src="../src/noc.engine.latest.js"></script>
+        <script>
+            
+
+
+
+            window.onerror  = function() {
+                engine.start();
+            }
+        
+            var engine = new Noc.Engine("#surface");
+
+        
+            engine.onFrame = function(time,fps) {
+                $("#fps").textContent = this.fps.current();
+            };
+
+       
+
+            // Create an entity - a red rectangle
+            var rectangle = new Noc.Entity("rectangle", function(canvas) {
+                var state = this.state; // get the propertis passed by the init
+                var ctx = canvas.ctx; // get the  drawing context on the canvas
+                ctx.fillStyle = "#ff0000";
+                ctx.fillRect(state.x, state.y, state.w , state.h);
+            }).init({
+                x: 10,
+                y: 10,
+                w: 1420,
+                h: 700
+            });
+
+
+            var circle = new Noc.Entity("circle", function (renderer) {
+                var ctx = renderer.ctx;
+                var centerX = renderer.width / 2;
+                var centerY = renderer.height / 2;
+                var radius = 70;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
+                ctx.fillStyle = '#00ff00';
+                ctx.fill();
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = '#0000ff';
+                ctx.stroke();
+
+
+
+
+            });
+
+       
+
+            // add the rectangle entity to the engine
+            engine.addEntity(rectangle);
+
+
+            // add the circle entiry to the engine
+
+            engine.addEntity(circle);
+
+            // start the engine
+
+            document.addEventListener("DOMContentLoaded", function () {
+
+                engine.start(); // start the engine
+
+            });
+
+
+        </script>
+    </body>
+</html>

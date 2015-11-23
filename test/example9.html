@@ -1,0 +1,168 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <style>
+        canvas {
+            background: #000;
+             height: 100%;
+            width: 100%;
+        }
+        #wrapper {
+            height: 100%;
+            width: 100%;
+        }
+        body,html {
+            margin: 0;padding: 0;
+            overflow: hidden;
+        }
+        mark {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+
+        }
+    </style>
+</head>
+    <body>
+        <mark id="deg"></mark>
+        <div id="wrapper">
+            <canvas width="800" height="600" id="surface"></canvas>
+        </div>
+        <script src="../src/noc.engine.latest.js"></script>
+
+
+
+        <script>
+
+    
+
+        
+            var engine,pyramid,fov = [];
+
+            document.addEventListener("DOMContentLoaded", function() {
+                engine = new Noc.Engine("#surface", null, $("#wrapper"));
+                $("#surface").addEventListener("mousemove", function (evt) {
+
+                    console.log(evt);
+
+                });
+                $("#surface").addEventListener("mousewheel", function (evt) {
+                });
+
+
+                pyramid = new Noc.Entity("piramid", function(rend) {
+                    var state = this.state;
+                    var width = rend.width;
+                    var height = rend.height;
+                    var ctx = rend.ctx;
+                    var faces = state.faces;
+                    var points = state.points;
+                    var projected = [], sortedFaces = [];
+
+                    for (var i = 0; i < points.length; i++) {
+                        var v = points[i];
+                        var r = v.rotateY(state.angle);
+                        var p = r.project(width, height, 1800, 11);
+                        projected.push(p);
+                    }
+                    faces.forEach(function(face,index) {
+                        sortedFaces[index] = {
+                            "index": index,
+                            "z": (projected[face[0]].z + projected[face[1]].z + projected[face[2]].z) / 3.0
+                        };
+                    });
+                    
+                    sortedFaces.sort(function(a, b) {
+                        return b.z - a.z;
+                    });
+                    sortedFaces.forEach(function (face,index) {
+                        var f = faces[face.index];
+
+
+                        //console.log(f);
+
+                        ctx.fillStyle = state.color[index];
+
+                        ctx.beginPath();
+
+
+                     
+
+                        ctx.moveTo(projected[f[0]].x, projected[f[0]].y);
+                        ctx.lineTo(projected[f[1]].x, projected[f[1]].y);
+                        ctx.lineTo(projected[f[2]].x, projected[f[2]].y);
+
+
+                        ctx.closePath();
+                        ctx.fill();
+                         
+                    });
+                   state.angle += 0.5;
+
+
+                }).init({
+                    angle: 0,
+                    d: 10,
+                    x: 300,
+                    y: 300,
+                    points: [
+                        new Noc.Point3D(0, -1, 0),
+                        new Noc.Point3D(-1, 1, 0),
+                        new Noc.Point3D(1, 1, 0),
+                        new Noc.Point3D(0, 0, -1)
+                    ],
+                    color: [
+                        '#333', '#444', '#666', '#777'
+                    ],
+                    faces: [
+                        [0, 1, 2], //0
+                        [0, 1, 3], //1
+                        [2, 3, 0], //2
+                        [1, 2, 3] //3
+                    ]
+                });
+
+
+
+
+
+               
+
+                var fov = new Noc.Entity("fov", function(renderer) {
+                    var ctx = renderer.ctx;
+                    var state = this.state;
+                    var width = renderer.width;
+                    var height = renderer.height;
+                    var p = state.point.project(width, height, 1800, 11);
+                    ctx.strokeStyle = 'red';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI);
+                    ctx.stroke();
+
+                    state._p = p;
+
+
+                }).init({
+                    point: new Noc.Point3D(0, -1, 0),
+                });
+
+
+                engine.addEntities(pyramid,fov);
+                engine.start();
+
+
+            });
+
+            window.onerror = function (err) {
+                console.log(err);
+                engine.start();
+            };
+
+
+        </script>
+
+
+
+    </body>
+</html>

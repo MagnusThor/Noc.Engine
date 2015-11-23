@@ -1,0 +1,137 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <style>
+        canvas {
+            background: #000;
+          
+        }
+    </style>
+</head>
+<body>
+
+    <canvas width="800" height="600" id="surface"></canvas>
+    <script src="../src/noc.engine.latest.js"></script>
+
+
+
+    <script>
+
+        function Sphere3D(r) {
+            this.point = [];
+
+            this.color = "rgb(100,0,255)";
+
+            this.radius = r;
+            this.numberOfVertexes = 0;
+
+            for (alpha = 0; alpha <= 6.28; alpha += 0.17) {
+                p = this.point[this.numberOfVertexes] = new Noc.Point3D();
+
+                p.x = Math.cos(alpha) * this.radius;
+                p.y = 0;
+                p.z = Math.sin(alpha) * this.radius;
+
+                this.numberOfVertexes++;
+            }
+
+        
+            for (var direction = 1; direction >= -1; direction -= 2) {
+                for (var beta = 0.17; beta < 1.445; beta += 0.17) {
+                    var radius = Math.cos(beta) * this.radius;
+                    var fixedY = Math.sin(beta) * this.radius * direction;
+
+                    for (var alpha = 0; alpha < 6.28; alpha += 0.17) {
+                        p = this.point[this.numberOfVertexes] = new Noc.Point3D();
+
+                        p.x = Math.cos(alpha) * radius;
+                        p.y = fixedY;
+                        p.z = Math.sin(alpha) * radius;
+
+                        this.numberOfVertexes++;
+                    }
+                }
+            }
+
+        };
+
+            var engine;
+            document.addEventListener("DOMContentLoaded", function() {
+
+                engine = new Noc.Engine("#surface");
+
+
+
+
+                var sp = new Noc.Entity("sphere", function (rend) {
+
+                    var state = this.state;
+
+                    var sphere = state.sphere;
+                    var width = rend.width;
+                    var height = rend.height;
+                    var ctx = rend.ctx;
+                        var x =0, y=0;
+
+                    
+                        ctx.save();
+                   
+                      //  ctx.globalCompositeOperation = "lighter";
+                
+                        for (var i = 0; i < sphere.numberOfVertexes; i++) {
+
+                            var v = sphere.point[i];
+
+                            var r = v.rotateX(state.rotation).rotateY(state.rotation);///.rotateZ(state.rotation);
+                            var p = r.project(width, height, 400, 40);
+                       
+                    
+                            ctx.fillStyle = "red";
+                            //if((x >= 0) && (x < width)) {
+                            //    if((y >= 0) && (y < height)) {
+                                    if (p.z < 0) {
+                                        ctx.fillStyle = "#dadada";
+                                        ctx.fillRect(p.x, p.y, 2,2);
+
+
+                                    } else {
+                                        ctx.fillStyle = "red";
+                                        ctx.fillRect(p.x, p.y, 2, 2);
+                                     
+                                    }
+                                }
+                        //    }                   
+                        //}
+                        ctx.restore();
+
+                    state.rotation += 0.5;
+
+                        if(state.distance < 1000) {
+                            state.distance += 01;
+                        }
+                }).init({
+                    rotation: 0.4,
+                    distance:0,
+                    sphere : new Sphere3D(15)
+                });
+
+
+                engine.addEntity(sp);
+                engine.start();
+
+
+            });
+
+            window.onerror = function (err) {
+                console.log(err);
+                engine.start();
+            };
+
+
+    </script>
+
+
+
+</body>
+</html>

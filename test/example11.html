@@ -1,0 +1,643 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <style>
+        canvas {
+            background: #fff0f5;
+        }
+        #wrapper {
+            position: absolute;
+            width: 1000px;
+            height: 600px;
+        }
+    </style>
+
+</head>
+    <body>
+        
+        
+        <div id="wrapper">
+            <canvas id="surface" width="1000" height="6000"> </canvas>
+        </div>
+            
+       
+
+       
+
+
+        <script src="../src/jquery-1.11.2.js"></script>
+
+
+    
+        <script src="../src/noc.engine.latest.js"></script>
+        <script>
+            var engine;
+
+
+           var controls = {
+                x: -280,
+                y: 0,
+                z: 0,
+                d: 50
+            };
+
+           window.addEventListener("keydown", function (e) {
+               console.log(e.keyCode);
+                switch (e.keyCode) {
+                    case 37:
+                        controls.y -= 1;
+                        break;
+                    case 38:
+                        controls.x += 1;
+                        break;
+                    case 39:
+                        controls.y += 1;
+                        break;
+                    case 40:
+                        controls.x -= 1;
+                        break;
+                    case 65:
+                        controls.z -= 1;
+                        break;;
+                    case 83:
+                        controls.z += 1;
+                        break;;
+                    case 49:
+                        controls.d -= 1;
+                        break;;
+                    case 50:
+                        controls.d += 1;
+                        break;;
+                }
+            }, false);
+
+
+            function textureMap(ctx, texture, pts) {
+
+                var tris = [
+                    [0, 1, 2], [0, 2, 3]
+                ];
+
+                for (var t = 0; t < 2; t++) {
+                    var pp = tris[t];
+                    var x0 = pts[pp[0]].x, x1 = pts[pp[1]].x, x2 = pts[pp[2]].x;
+                    var y0 = pts[pp[0]].y, y1 = pts[pp[1]].y, y2 = pts[pp[2]].y;
+                    var u0 = pts[pp[0]].u, u1 = pts[pp[1]].u, u2 = pts[pp[2]].u;
+                    var v0 = pts[pp[0]].v, v1 = pts[pp[1]].v, v2 = pts[pp[2]].v;
+                    ctx.save(); ctx.beginPath();
+                    ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+
+                    ctx.lineTo(x2, y2); ctx.closePath(); ctx.clip();
+
+
+                    var delta = u0 * v1 + v0 * u2 + u1 * v2 - v1 * u2 - v0 * u1 - u0 * v2;
+
+                    var deltaA = x0 * v1 + v0 * x2 + x1 * v2 - v1 * x2 - v0 * x1 - x0 * v2;
+                    var deltaB = u0 * x1 + x0 * u2 + u1 * x2 - x1 * u2 - x0 * u1 - u0 * x2;
+                    var deltaC = u0 * v1 * x2 + v0 * x1 * u2 + x0 * u1 * v2 - x0 * v1 * u2
+                        - v0 * u1 * x2 - u0 * x1 * v2;
+
+                    var deltaD = y0 * v1 + v0 * y2 + y1 * v2 - v1 * y2 - v0 * y1 - y0 * v2;
+                    var deltaE = u0 * y1 + y0 * u2 + u1 * y2 - y1 * u2 - y0 * u1 - u0 * y2;
+
+                    var deltaF = u0 * v1 * y2 + v0 * y1 * u2 + y0 * u1 * v2 - y0 * v1 * u2
+                        - v0 * u1 * y2 - u0 * y1 * v2;
+
+
+                    ctx.transform(deltaA / delta, deltaD / delta,
+                        deltaB / delta, deltaE / delta,
+                        deltaC / delta, deltaF / delta);
+
+
+                    ctx.drawImage(texture, 0, 0);
+
+
+
+
+                    ctx.restore();
+                }
+            }
+
+            var tx = function (w, h) {
+                var c = document.createElement("canvas");
+                c.width = 400;
+                c.height = 400;
+                var ctx = c.getContext("2d");
+
+                ctx.fillStyle ="red";
+                ctx.fillRect(0, 0, 400, 400);
+                var image = new Image();
+                image.src = ctx.canvas.toDataURL("image/png");
+                return image;
+            }
+
+
+        
+
+
+            var points = [];
+
+            function isBitSet(value, position) {
+
+                return value & (1 << position);
+            };
+
+
+            var randomColor = function () {
+                return '#' + Math.floor(Math.random() * 16777215).toString(16);
+            }
+
+            function drawTexturedTriangle(ctx,img, x0, y0, x1, y1, x2, y2,
+                                   u0, v0, u1, v1, u2, v2) {
+
+                ctx.beginPath();
+                ctx.moveTo(x0, y0);
+                ctx.lineTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.closePath();
+
+                x1 -= x0;
+                y1 -= y0;
+                x2 -= x0;
+                y2 -= y0;
+
+                u1 -= u0;
+                v1 -= v0;
+                u2 -= u0;
+                v2 -= v0;
+
+                var det = 1 / (u1 * v2 - u2 * v1),
+
+               
+                    a = (v2 * x1 - v1 * x2) * det,
+                    b = (v2 * y1 - v1 * y2) * det,
+                    c = (u1 * x2 - u2 * x1) * det,
+                    d = (u1 * y2 - u2 * y1) * det,
+
+                
+                    e = x0 - a * u0 - c * v0,
+                    f = y0 - b * u0 - d * v0;
+
+                ctx.save();
+                ctx.transform(a, b, c, d, e, f);
+                ctx.clip();
+                ctx.drawImage(img, 0, 0);
+                ctx.restore();
+            }
+
+            var assets;
+            $(function () {
+
+
+                assets = new Noc.Assets({
+                    images: ["/test/assets/texture.jpg"]
+                });
+
+
+
+                engine = new Noc.Engine("#surface",null,document.querySelector("#wrapper"));
+
+                var drawTris = function (context, tris, angles, color, tx) {
+                    var p = [];
+                    for (var j = 0; j < tris.length; j++) {
+                        var v = tris[j];
+
+                        var r = v.rotateX(angles.x).rotateY(angles.y).rotateZ(angles.z);
+                        p.push(r.project(1000, 600, 6000, angles.d));
+
+                    }
+                    //context.fillStyle = color;
+                    //context.stokeStyle = color;
+                    //for (var c = 0; c < p.length;c++) {
+                    //    context.fillRect(p[c].x, p[c].y,1,1);
+                    //}
+
+
+                    var x0 = p[0].x, y0  =p[0].y, x1 = p[1].x, y1  = p[1].y, x2 = p[2].x, y2  = p[2].y;
+
+
+                    context.save();
+                    context.beginPath();
+                    context.lineWidth = 1;
+                    context.moveTo(x0,y0);
+                    context.lineTo(x1,y1);
+                    context.lineTo(x2,y2);
+                    context.closePath();
+                    context.stroke();
+                    context.restore();
+
+                    //drawTexturedTriangle(context,tx, x0, y0, x1, y1, x2, y2,
+                    //    0, 0, 0, 1, 1, 1);
+
+
+                }
+
+                window.onerror = function(parameters) {
+                    engine.start();
+                };
+
+                $.getJSON("/test/assets/models/test.js").success(function (model) {
+                    console.log("parsing model");
+                    console.log(" model.geometries", model.geometries,model.object);
+                    model.geometries.forEach(function(geometry) {
+                        var n = parseModel(geometry.data, 1);
+                        n.name = geometry.data.name;
+
+
+                        var entity = new Noc.Entity(n.name, function(renderer) {
+                            
+                            for (var i = 0; i < this.state.geometry.faces.length; i++) {
+                                var face = this.state.geometry.faces[i];
+                                var tri = [
+                                    this.state.geometry.verticles[face.a], this.state.geometry.verticles[face.b],
+                                    this.state.geometry.verticles[face.c]
+                                ];
+                             
+                                drawTris(renderer.ctx, tri, this.state.angles, this.state.color,this.state.tx);
+                            }
+
+                         
+
+                       //     this.state.angle += 0.1;
+
+
+                        }).init({
+                            color: n.color,
+                            angle: 0,
+                            geometry: n,
+                            tx: assets.getImage("/test/assets/texture.jpg"),
+                            angles: controls
+                         //   tx: tx()
+
+                    });
+
+                     
+
+
+                        engine.addEntity(entity);
+
+                    });
+
+
+                    engine.start();
+
+
+                    //window.setInterval(function (parameters) {
+
+                    //    engine.entities.forEach(function(en) {
+                    //        en.state.angle += 1;
+                    //    });
+
+                   // }, 1000 / 30);
+
+
+                });
+
+            });
+
+            function isBitSet(value, position) {
+
+                return value & (1 << position);
+
+            }
+            function parseModel(json, scale) {
+
+
+                var geo = new Noc.Geometry();
+
+
+              
+
+                var i,
+                    j,
+                    fi,
+
+                    offset,
+                    zLength,
+
+                    colorIndex,
+                    normalIndex,
+                    uvIndex,
+                    materialIndex,
+
+                    type,
+                    isQuad,
+                    hasMaterial,
+                    hasFaceVertexUv,
+                    hasFaceNormal,
+                    hasFaceVertexNormal,
+                    hasFaceColor,
+                    hasFaceVertexColor,
+
+                    vertex,
+                    face,
+                    faceA,
+                    faceB,
+                    hex,
+                    normal,
+
+                    uvLayer,
+                    uv,
+                    u,
+                    v,
+
+                    faces = json.faces,
+                    vertices = json.vertices,
+                    normals = json.normals,
+                    colors = json.colors,
+
+                    nUvLayers = 0;
+
+                if (json.uvs !== undefined) {
+                    // disregard empty arrays
+                    for (i = 0; i < json.uvs.length; i ++) {
+                        if (json.uvs[i].length) nUvLayers ++;
+                    }
+                    for (i = 0; i < nUvLayers; i ++) {
+                        geo.faceVertexUvs[i] = [];
+                    }
+
+                }
+
+                offset = 0;
+                zLength = vertices.length;
+
+                while (offset < zLength) {
+
+                    vertex = new Noc.Point3D();
+
+                    vertex.x = vertices[offset ++] * scale;
+                    vertex.y = vertices[offset ++] * scale;
+                    vertex.z = vertices[offset++] * scale;
+
+
+               
+
+                          geo.verticles.push(vertex);
+
+                }
+
+                offset = 0;
+                zLength = faces.length;
+
+                while (offset < zLength) {
+
+                    type = faces[offset ++];
+
+
+                    isQuad = isBitSet(type, 0);
+                    hasMaterial = isBitSet(type, 1);
+                    hasFaceVertexUv = isBitSet(type, 3);
+                    hasFaceNormal = isBitSet(type, 4);
+                    hasFaceVertexNormal = isBitSet(type, 5);
+                    hasFaceColor = isBitSet(type, 6);
+                    hasFaceVertexColor = isBitSet(type, 7);
+
+                 
+                    if (isQuad) {
+
+                 
+                     
+
+                        faceA = new Noc.Face();
+                        faceB = new Noc.Face();
+                        
+                        faceA.a = faces[offset];
+                        faceA.b = faces[offset + 1];
+                        faceA.c = faces[offset + 3];
+
+                       
+                        faceB.a = faces[offset + 1];
+                        faceB.b = faces[offset + 2];
+                        faceB.c = faces[offset + 3];
+
+                        offset += 4;
+
+                        if (hasMaterial) {
+
+                            materialIndex = faces[offset ++];
+                            faceA.materialIndex = materialIndex;
+                            faceB.materialIndex = materialIndex;
+
+                        }
+                        fi = json.faces.length;
+                        if (hasFaceVertexUv) {
+                         
+                            for (i = 0; i < nUvLayers; i ++) {
+
+
+                             
+                                uvLayer = json.uvs[i];
+
+
+                             
+                                geo.faceVertexUvs[i][fi] = [];
+                                geo.faceVertexUvs[i][fi + 1] = [];
+
+                                for (j = 0; j < 4; j ++) {
+
+                                    uvIndex = faces[offset++];
+
+                                    // console.log(uvIndex, uvLayer[uvIndex * 2]);
+
+                                    u = uvLayer[uvIndex * 2];
+                                    v = uvLayer[uvIndex * 2 + 1];
+
+
+                                    //geo.faceVertexUvs.push({
+                                    //    u: u,
+                                    //    v:v
+                                    
+                                    //});
+
+                                   uv = new Noc.Point2D(u, v);
+
+                                    if (j !== 2) geo.faceVertexUvs[i][fi].push(uv);
+                                    if (j !== 0) geo.faceVertexUvs[i][fi + 1].push(uv);
+
+
+                                    //faceA.faceVertexUvs.push({
+                                    //    u: u,
+                                    //    v: v
+                                    //});
+
+                                }
+
+                            }
+
+                        }
+
+                        if (hasFaceNormal) {
+
+                            normalIndex = faces[offset ++] * 3;
+
+                            //faceA.normal.set(
+                            //    normals[normalIndex ++],
+                            //    normals[normalIndex ++],
+                            //    normals[normalIndex]
+                            //);
+
+                            //faceB.normal.copy(faceA.normal);
+
+                        }
+
+                        if (hasFaceVertexNormal) {
+
+                            for (i = 0; i < 4; i ++) {
+
+                                normalIndex = faces[offset ++] * 3;
+
+                                //normal = new THREE.Vector3(
+                                //    normals[normalIndex ++],
+                                //    normals[normalIndex ++],
+                                //    normals[normalIndex]
+                                //);
+
+
+                                //if (i !== 2) faceA.vertexNormals.push(normal);
+                                //if (i !== 0) faceB.vertexNormals.push(normal);
+
+                            }
+
+                        }
+
+
+                        if (hasFaceColor) {
+
+                            colorIndex = faces[offset ++];
+                            //hex = colors[colorIndex];
+
+                            //faceA.color.setHex(hex);
+                            //faceB.color.setHex(hex);
+
+                        }
+
+
+                        if (hasFaceVertexColor) {
+
+                            for (i = 0; i < 4; i ++) {
+
+                                colorIndex = faces[offset ++];
+                                hex = colors[colorIndex];
+
+                                //if (i !== 2) faceA.vertexColors.push(new THREE.Color(hex));
+                                //if (i !== 0) faceB.vertexColors.push(new THREE.Color(hex));
+
+                            }
+
+                        }
+
+                        geo.faces.push(faceB);
+                        geo.faces.push(faceA);
+                     
+
+
+                    } else { // is tri
+
+                        face = new Noc.Face();
+                        face.a = faces[offset ++];
+                        face.b = faces[offset ++];
+                        face.c = faces[offset ++];
+
+                        if (hasMaterial) {
+
+                            materialIndex = faces[offset ++];
+                           face.materialIndex = materialIndex;
+
+                        }
+
+                        // to get face <=> uv index correspondence
+
+                        fi = faces.length;
+                       
+
+                        if (hasFaceVertexUv) {
+
+                            for (i = 0; i < nUvLayers; i ++) {
+
+                                uvLayer = json.uvs[i];
+
+                                  geo.faceVertexUvs[i][fi] = [];
+
+                                for (j = 0; j < 3; j ++) {
+
+                                    uvIndex = faces[offset ++];
+
+                                    u = uvLayer[uvIndex * 2];
+                                    v = uvLayer[uvIndex * 2 + 1];
+
+                                   uv = new Noc.Point2D(u, v);
+
+                                  geo.faceVertexUvs[i][fi].push(uv);
+
+                                }
+
+                            }
+
+                        }
+
+                        if (hasFaceNormal) {
+
+                            normalIndex = faces[offset ++] * 3;
+
+                            //face.normal.set(
+                            //    normals[normalIndex ++],
+                            //    normals[normalIndex ++],
+                            //    normals[normalIndex]
+                            //);
+
+                        }
+
+                        if (hasFaceVertexNormal) {
+
+                            for (i = 0; i < 3; i ++) {
+
+                                normalIndex = faces[offset ++] * 3;
+
+                                //normal = new THREE.Vector3(
+                                //    normals[normalIndex ++],
+                                //    normals[normalIndex ++],
+                                //    normals[normalIndex]
+                                //);
+
+                        //        face.vertexNormals.push(normal);
+
+                            }
+
+                        }
+
+
+                        if (hasFaceColor) {
+
+                            colorIndex = faces[offset ++];
+                          //  face.color.setHex(colors[colorIndex]);
+
+                        }
+
+
+                        if (hasFaceVertexColor) {
+
+                            for (i = 0; i < 3; i ++) {
+
+                                colorIndex = faces[offset ++];
+                          //      face.vertexColors.push(new THREE.Color(colors[colorIndex]));
+
+                            }
+
+                        }
+
+                        geo.faces.push(face);
+
+                    }
+
+                }
+                geo.color = randomColor();
+                return geo;
+
+            };
+
+        </script>
+
+    </body>
+</html>
