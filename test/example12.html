@@ -192,7 +192,7 @@
             document.addEventListener("DOMContentLoaded", function () {
 
                 assets = new Noc.Assets({
-                    images: ["/test/assets/texture.jpg"]
+                    images: ["assets/texture.jpg"]
                 });
 
                 engine = new Noc.Engine("#surface", null, document.querySelector("#wrap"));
@@ -221,7 +221,7 @@
 
 
                     }).setState({
-                        map: new Map(new Noc.BitMap(assets.getImage("/test/assets/texture.jpg"), 200, 200), 32).randomize(),
+                        map: new Map(new Noc.BitMap(assets.getImage("assets/texture.jpg"), 200, 200), 32).randomize(),
                         range: 12,
                         focalLength: 0.8,
                         camera: camera,

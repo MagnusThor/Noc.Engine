@@ -237,7 +237,7 @@
                     engine.start();
                 };
 
-                $.getJSON("/test/assets/models/test.js").success(function (model) {
+                $.getJSON("assets/models/test.js").success(function (model) {
                     console.log("parsing model");
                     console.log(" model.geometries", model.geometries,model.object);
                     model.geometries.forEach(function(geometry) {
@@ -266,7 +266,7 @@
                             color: n.color,
                             angle: 0,
                             geometry: n,
-                            tx: assets.getImage("/test/assets/texture.jpg"),
+                            tx: assets.getImage("assets/texture.jpg"),
                             angles: controls
                          //   tx: tx()
 
