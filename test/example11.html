@@ -125,7 +125,7 @@
                 c.height = 400;
                 var ctx = c.getContext("2d");
 
-                ctx.fillStyle ="red";
+                ctx.fillStyle ="rgba(0,0,0)";
                 ctx.fillRect(0, 0, 400, 400);
                 var image = new Image();
                 image.src = ctx.canvas.toDataURL("image/png");
@@ -207,12 +207,6 @@
                         p.push(r.project(1000, 600, 6000, angles.d));
 
                     }
-                    //context.fillStyle = color;
-                    //context.stokeStyle = color;
-                    //for (var c = 0; c < p.length;c++) {
-                    //    context.fillRect(p[c].x, p[c].y,1,1);
-                    //}
-
 
                     var x0 = p[0].x, y0  =p[0].y, x1 = p[1].x, y1  = p[1].y, x2 = p[2].x, y2  = p[2].y;
 
@@ -266,7 +260,7 @@
                             color: n.color,
                             angle: 0,
                             geometry: n,
-                            tx: assets.getImage("assets/texture.jpg"),
+                            tx: tx(),
                             angles: controls
                          //   tx: tx()
 
