@@ -1,0 +1,147 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>GLSL fragment shader thingy ++ </title>
+    <style>
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        html, body {
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+<canvas id="surface"></canvas>
+<script src="../libs/sid/scriptProcessor.js"></script>
+    <script src="../libs/sid/tinysid.js"></script>
+
+    <script src="../src/noc.engine.latest.js"></script>
+    <script>
+            var GLSLFragments = (function () {
+                var ctor = function() {
+                    var args = arguments;
+                };
+                ctor.prototype.create = function (time, fragcoord,w,h) {
+                    var u = [(fragcoord[0] / w) * 2 - 1, (fragcoord[1] / w) * 2 - (h / w)];
+                    var t = time * 0.2;
+                    var tt = Math.sin(t / 8) * 64;
+                    var x = u[0] * tt + Math.sin(t * 2.1) * 4.0;
+                    var y = u[1] * tt + Math.cos(t * 2.3) * 4.0;
+                    var c = Math.sin(x) + Math.sin(y);
+                    var zoom = Math.sin(t);
+                    x = x * zoom * 2.0 + Math.sin(t * 1.1);
+                    y = y * zoom * 2.0 + Math.cos(t * 0.3);
+                    var xx = Math.cos(t * 0.7) * x - Math.sin(t * 0.7) * y;
+                    var yy = Math.sin(t * 0.7) * x + Math.cos(t * 0.7) * y;
+                    c = (Math.sin(c + (Math.sin(xx) + Math.sin(yy))) + 1.0) * 0.4;
+                    var v = 2 - Math.sqrt(u[0] * u[0] + u[1] * u[1]) * 2;
+                    return [v * (c + v * 0.4), v * (c * c - 0.5 + v * 0.5), v * (c * 0.9), 1];
+                }
+                return ctor;
+            })();
+            window.onerror = function (err) {
+                engine.start(); // stop engine if err
+            }
+
+            var engine, gslFragments;
+            var spectrum;
+
+
+            var Spectrum = (function () {
+                var ctor = function (source) {
+                    var bgAnalyzer = source._analyzerNode;
+                    this.entity = new Noc.Entity("spectrum", function (viewport) {
+
+                        var ctx = viewport.ctx;
+                        var array = new Uint8Array(bgAnalyzer.frequencyBinCount);
+                        bgAnalyzer.getByteFrequencyData(array);
+                        for (var i = 0; i < (array.length) ; i++) {
+                            var value = array[i];
+                            ctx.fillStyle = "rgba(255,255,255,0.1)";
+                            ctx.fillRect(i, ((viewport.height) - value * 2), 10, viewport.height);
+                        }
+                    }
+                    ).init({
+
+
+
+                    });
+                };
+                return ctor;
+            })();
+
+
+
+
+            document.addEventListener("DOMContentLoaded", function () {
+
+
+                // when the sig is loaded. add the spectrum
+                ScriptNodePlayer.createInstance(new SIDBackendAdapter(), "", [], true, function () { }, function () {
+                    this.play();
+                    engine.addEntities(gslFragments, new Spectrum(this).entity);
+                 
+
+                }, function () {
+                    //console.log("doOnTrackEnd");
+                });
+                ScriptNodePlayer.getInstance().loadMusicFromURL("So-Phisticated_III_part_6.zip", {
+                    basePath: "assets/sid/"
+                }, function () { });
+
+
+
+                engine = new Noc.Engine("#surface");
+
+             
+
+
+                gslFragments = new Noc.Entity("gslFragments", function (frame, tfs, tm) {
+
+                    var state = this.state;
+                    var ctx = frame.ctx;
+                    var delta = (tm / 1000) + state.o;
+
+                    var w = frame.width;
+                    var h = frame.height;
+
+                    var buffer = ctx.createImageData(w, h);
+
+
+                    for (var x = 0; x < w; x++) {
+                        for (var y = 0; y < h; y++) {
+                            var ret = state.shader.create(delta, [x, y], w, h);
+                            var i = (y * buffer.width + x) * 4;
+                            buffer.data[i] = ret[0] * 255;
+                            buffer.data[i + 1] = ret[1] * 255;
+                            buffer.data[i + 2] = ret[2] * 255;
+                            buffer.data[i + 3] = ret[3] * 255;
+                        }
+                    }
+                    ctx.putImageData(buffer, 0, 0);
+
+
+                }).setState({
+                    shader: new GLSLFragments(),
+                    o: 0
+            });
+
+            
+                engine.start();
+
+
+            });
+
+    </script>
+
+</body>
+</html>
