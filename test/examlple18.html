@@ -1,0 +1,183 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <meta charset="utf-8" />
+    <style>
+        body {
+            padding: 1em;
+            overflow: hidden;
+        }
+
+        html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        canvas {
+            background: #000;
+        }
+
+        #wrapper {
+            position: absolute;
+            margin-left: auto;
+            margin-right: auto;
+            top: 1em;
+            width: 720px;
+            height: 405px;
+            padding: 0;
+        }
+
+        #log {
+            position: absolute;
+            right: 1em;
+            width: 400px;
+            top: 1em;
+            background: #dadada;
+            min-height: 70%;
+            padding: 10px;
+            font-size: 80%;
+        }
+    </style>
+</head>
+<body>
+    <div id="wrapper">
+
+        <canvas id="surface" width="720" height="405"></canvas>
+    </div>
+
+    <div id="log">
+
+    </div>
+
+
+    <script src="../src/noc.engine.latest.js"></script>
+    <script src="../libs/triangulate.js"></script>
+    <script>
+        var trace = function (t, d) {
+            var div = document.createElement("div");
+            div.textContent = t;
+            var data = document.createElement("p");
+            data.textContent = JSON.stringify(d);
+            div.appendChild(data);
+            $("#log").appendChild(div);
+        }
+
+     
+
+        var engine,camera = {
+            fov: 10000,
+            d: 1500
+        };
+        window.onerror = function () {
+            engine.start();
+        }
+
+        // set up stuff
+        function generateBuildingTexture() {
+            var canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 64;
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 32, 64);
+            for (var y = 2; y < 64; y += 2) {
+                for (var x = 0; x < 32; x += 2) {
+                    var value = Math.floor(Math.random() * 64);
+                    ctx.fillStyle = 'rgb(' + [value, value, value].join(',') + ')';
+                    ctx.fillRect(x, y, 2, 1);
+                }
+            }
+            var canvas2 = document.createElement('canvas');
+            canvas2.width = 512;
+            canvas2.height = 1024;
+            ctx = canvas2.getContext('2d');
+            ctx.imageSmoothingEnabled = false;
+            ctx.webkitImageSmoothingEnabled = false;
+            ctx.mozImageSmoothingEnabled = false;
+            ctx.drawImage(canvas, 0, 0, canvas2.width, canvas2.height);
+            return canvas2;
+        };
+
+        var Building = function (o) {
+            var building = new Noc.Object3D();
+            var dX = o.x;
+            var dZ = o.z;
+            var dY = o.y;
+
+           
+            var mesh = [
+            new Noc.Point3D(dX - 1, dY + 1, dZ - 1,0,1),  //0
+            new Noc.Point3D(dX + 1, dY + 1, dZ - 1,0,1), //1
+            new Noc.Point3D(dX + 1, dY - 1, dZ - 1, 0, 1), // 2
+            new Noc.Point3D(dX - 1, dY - 1, dZ - 1, 0, 1), //3
+            new Noc.Point3D(dX - 1, dY + 1, dZ + 1, 0, 1), // 4
+            new Noc.Point3D(dX + 1, dY + 1, dZ + 1, 0, 1),// 5
+            new Noc.Point3D(dX + 1, dY - 1, dZ + 1, 0, 1),// 6
+            new Noc.Point3D(dX - 1, dY - 1, dZ + 1, 0, 1)
+            ];
+
+            building.verticles = mesh;
+            
+         
+            var triangles = Noc.Helpers.triangulate(
+                Noc.Helpers.flattenVerticles(mesh)
+            );
+            Noc.Helpers.getFaces(triangles, 3).forEach(function (face) {
+
+                building.faces.push(face);
+
+            });
+
+           
+             return building;
+        };
+        var seedBuildings = function(n) {
+            var buildings = [];
+            for (var i = 0; i < n; i++) {
+                var p = new Noc.Point3D();
+                p.x = Math.floor(Math.random() * 72 -72) *2;
+                p.z = Math.floor(Math.random() * 72 - 72) * 2;
+                p.y = (Math.random() * Math.random() * Math.random() * 1) * 8 + 8;
+
+                buildings.push(new Building(p));
+            }
+            return buildings;
+        };
+        var cityEntity;
+        document.addEventListener("DOMContentLoaded", function (evt) {
+
+            engine = new Noc.Engine("#surface", null, $("#wrapper"));
+
+            cityEntity = new Noc.Entity("city", function(frame, time, elapsed) {
+                var state = this.state;
+
+                for (var i = 0; i < state.objects.length; i++) {
+
+                    var projected = state.objects[i]
+                        .project(frame.width, frame.height  , camera.fov, camera.d);
+
+                    state.objects[i].rotateY((state.rotationY) * .05);
+
+                    engine.drawing.drawTriangles(state.material,
+                        projected,
+                        state.objects[i].faces);
+
+                };
+
+            }).setState({
+                camera: camera,
+                rotationY:  Math.random()*Math.PI*2,// 0, //(2 * Math.PI) / 60,
+                objects: seedBuildings(200),
+                material:Noc.Texture.basicTexture(1000, 1000, "#ffffff")// generateBuildingTexture()
+        });
+
+             engine.addEntity(cityEntity);
+            engine.start();
+
+        });
+
+    </script>
+</body>
+</html>

@@ -4,19 +4,37 @@
     <title></title>
     <style>
         #wrapp {
-            width: 720px;
-            height: 405px;
+            width: 100%;
+            height: 100%;
         }
         canvas {
             background: #000000;
-             width: 720px;
-            height: 405px;
+             width: 100%;
+            height: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+        }
+        html,body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100%;
+        }
+        pre {
+            color: #ff00aa;
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            font-size: 150%;
+            z-index: 2000;
         }
     </style>
 </head>
     <body>
         <div id="wrapp">
-            <canvas id="surface" width="720" height="405"></canvas>
+            <canvas id="surface" ></canvas>
         </div>
         <pre id="debug"></pre>
         <script src="../src/noc.engine.latest.js"></script>
@@ -86,7 +104,7 @@
                     this.size = size;
                     this.wallGrid = new Uint8Array(size * size);
                     this.bitmap = bitmap;
-                    this.light = 1.4;
+                    this.light = 4.0;
                     return this;
                 };
 
@@ -158,11 +176,11 @@
                 engine.start();
             };
 
-            var drawWalls = function (ctx, column, ray, angle, map) {
+            var drawWalls = function (ctx, column, ray, angle, map,w,h) {
                 var project = function (height, a, distance) {
                     var z = distance * Math.cos(a);
-                    var wallHeight = 720 * height / z;
-                    var bottom =  405 / 2 * (1 + 1 / z);
+                    var wallHeight = w * height / z;
+                    var bottom =  400 / 2 * (1 + 1 / z);
                 
                     return {
                         top: bottom - wallHeight,
@@ -170,8 +188,8 @@
                     };
                 };
                 var texture = map.bitmap;
-                var left = Math.floor(column * 2.25);
-                var width = Math.ceil(2.25);
+                var left = Math.floor(column * 1);
+                var width = Math.ceil(1);
                 var hit = -1;
                 while (++hit < ray.length && ray[hit].height <= 0);              
                 for (var s = ray.length - 1; s >= 0; s--) {
@@ -179,9 +197,9 @@
                     if (s === hit) {
                         var textureX = Math.floor(texture.width * step.offset);
                         var wall = project(step.height, angle, step.distance);
-                        ctx.globalAlpha = 1;
+                       ctx.globalAlpha = 1;
                         ctx.drawImage(texture.image, textureX, 0, 1,texture.width, left, wall.top, width, wall.height);
-                        ctx.fillstyle = '#000000';
+                      ctx.fillstyle = '#ffffff';
                         ctx.globalAlpha = Math.max((step.distance + step.shading) / 5 - map.light, 0);
                         ctx.fillRect(left, wall.top, width, wall.height);
                     }
@@ -195,7 +213,7 @@
                     images: ["assets/texture.jpg"]
                 });
 
-                engine = new Noc.Engine("#surface", null, document.querySelector("#wrap"));
+                engine = new Noc.Engine("#surface",null,document.querySelector("#wrapp"));
 
                 var controls = new Controls();
                 var camera = new Camera(15.3, -1.2, Math.PI * 0.3);
@@ -206,13 +224,18 @@
                         var ctx = frame.ctx;
                         var map = state.map;
 
-                        state.camera.update(state.controls.states, map, ts);
+                        var w = frame.width;
+                        var h = frame.height;
+
+                        var q = w / 2;
+
+                        state.camera.update(state.controls.states, map, ts,w,h);
 
                          $("pre").textContent = JSON.stringify(state.camera);
 
                         ctx.save();
-                        for (var column = 0; column < 320; column++) {
-                            var x = column / 320 - 0.5;
+                        for (var column = 0; column < q; column++) {
+                            var x = column / q - 0.5;
                             var angle = Math.atan2(x, state.focalLength);
                             var ray = map.cast(state.camera, state.camera.direction + angle, state.range);
                             drawWalls(ctx, column, ray, angle, map);
@@ -221,7 +244,7 @@
 
 
                     }).setState({
-                        map: new Map(new Noc.BitMap(assets.getImage("assets/texture.jpg"), 200, 200), 32).randomize(),
+                        map: new Map(new Noc.BitMap(assets.getImage("assets/texture.jpg"), 200, 200),1024).randomize(),
                         range: 12,
                         focalLength: 0.8,
                         camera: camera,

@@ -1,0 +1,59 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+	<meta charset="utf-8" />
+</head>
+<body>
+<script>
+    
+    var map = function() {
+        var c = document.createElement("canvas");
+        c.width = 256;
+        c.height = 256;
+        var ctx = c.getContext("2d");
+       
+        for (var y=0;y<256;y++)
+        {
+            for (var x = 0; x < 256;
+            x++)
+            {
+                var 
+                nX = (x - 128) / 128;
+                var
+                nY = (y - 128) / 128;
+                var 
+                nZ = 1 - Math.sqrt(nX * nX + nY * nY);
+                if (nZ < 0) nZ = 0;
+                ctx.fillStyle = float2color(nZ * 256);
+                ctx.fillRect(x, y, 1, 1);
+
+            };
+
+        }
+
+        return c.toDataURL("image/png");
+    }
+
+    function float2color(percentage) {
+        var color_part_dec = 255 * percentage;
+        var color_part_hex = Number(parseInt(color_part_dec, 10)).toString(16);
+        return "#" + color_part_hex + color_part_hex + color_part_hex;
+    }
+    
+    /*
+ for (int y=0;y<256;y++)
+for (int x=0;x<256;x++)
+{
+   float nX=(x-128)/128;
+   float nY=(y-128)/128;
+   float nZ=1-sqrt(nX*nX + nY*nY);
+   if (nZ<0) nZ=0;
+   enviromentmap[x][y]=nZ*256; // 256 shades...
+};
+
+     */
+
+</script>
+</body>
+</html>

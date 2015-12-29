@@ -1,0 +1,226 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Example 16</title>
+    <meta charset="utf-8"/>
+    <style>
+        canvas,#con {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        html, body {
+            height: 100%;
+        }
+        #settings {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 1em;
+            background: rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+<div id="settings">
+    <input type="range" value="100" min="100" max="200" id="distance" step="10"/>
+    <button id="halt">Start/stop</button>
+</div>
+<div id="con">
+    <canvas id="surface"></canvas>
+</div>
+<script src="../src/noc.engine.latest.js"></script>
+
+<script>
+    var randomColor = function () {
+        return '#' + Math.floor(Math.random() * 16777215).toString(16);
+    }
+
+    function generateTexture() {
+        var canvas = document.createElement('canvas');
+        canvas.width = 32;
+        canvas.height = 64;
+        var context = canvas.getContext('2d');
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, 32, 64);
+        for (var y = 2; y < 64; y += 2) {
+            for (var x = 0; x < 32; x += 2) {
+                var value = Math.floor(Math.random() * 64);
+                context.fillStyle = 'rgb(' + [value, value, value].join(',') + ')';
+                context.fillRect(x, y, 2, 1);
+            }
+        }
+
+        var canvas2 = document.createElement('canvas');
+        canvas2.width = 512;
+        canvas2.height = 1024;
+        var context = canvas2.getContext('2d');
+        context.imageSmoothingEnabled = false;
+        context.webkitImageSmoothingEnabled = false;
+        context.mozImageSmoothingEnabled = false;
+        context.drawImage(canvas, 0, 0, canvas2.width, canvas2.height);
+        return canvas2;
+    };
+
+    var cubeGemomery = function(o) {
+        var dX = o.x;
+        var dZ = o.z;
+        var dY = o.y;
+        var mesh = [
+            new Noc.Point3D(dX - 1, dY + 1, dZ - 1),  //0
+            new Noc.Point3D(dX + 1, dY + 1, dZ-1), //1
+            new Noc.Point3D(dX + 1, dY - 1, dZ - 1), // 2
+            new Noc.Point3D(dX - 1, dY - 1, dZ - 1), //3
+            new Noc.Point3D(dX - 1, dY + 1, dZ + 1), // 4
+            new Noc.Point3D(dX + 1, dY + 1, dZ + 1),// 5
+            new Noc.Point3D(dX + 1, dY - 1, dZ + 1),// 6
+            new Noc.Point3D(dX - 1, dY -1, dZ + 1)
+        ];
+
+        mesh.forEach(function(m) {
+            m.scale(1.5);
+        });
+        return mesh;
+    };
+
+    var buildings = function(n) {
+        var buildingMeshs = [];
+        // create the mesh
+        for (var i = 0; i < n; i++) {
+            var buildingMesh = new Noc.Point3D();
+            buildingMesh.x = Math.floor(Math.random() * 100 - 100) * 2;
+            buildingMesh.z = Math.floor(Math.random() * 100 - 100) * 2;
+            buildingMesh.y = (Math.random() * (0.120 - 0.0200) + 0.0200);
+            buildingMeshs.push(new quad(buildingMesh));
+        }
+        return buildingMeshs;
+    }
+
+    var engine;
+
+    document.addEventListener("DOMContentLoaded", function (evt) {
+
+        $("#halt").addEventListener("click",function() {
+            engine.start();
+        });
+
+        $("#distance").addEventListener("change", function (evt) {
+
+            engine.entities.first().state.d = parseFloat(this.value);
+        });
+
+
+
+        var colors = [];
+        var numG = 100;
+
+
+        for (var g = 0; g < numG; g++ ) {
+            colors.push(randomColor());
+        };
+
+        engine = new Noc.Engine("#surface", null, document.querySelector("#con"));
+
+        var sea = new Noc.Entity("sea", function(frame, tf, ts) {
+
+            var state = this.state;
+            var ctx = frame.ctx;
+            var quads = state.m;
+
+            var faces = [[0, 1, 2, 3], [1, 5, 6, 2]];
+
+
+            for (var i = 0; i < quads.length; i++) {
+                var t = [];
+
+                var q = quads[i];
+
+                for (var vert = 0; vert < q.length; vert++) {
+                    var v = q[vert];
+                    var r = v.rotateY(this.state.angle);//.rotateX(this.state.angle)  ;
+
+                    var p = r.project(frame.width, frame.height, this.state.fov, this.state.d);
+                    t.push(p);
+                }
+
+                var avgZ = [];
+
+                for (var ii = 0; ii < faces.length; ii++) {
+                    var f = faces[ii];
+
+                    avgZ[ii] = { "index": ii, "z": (t[f[0]].z + t[f[1]].z + t[f[2]].z + t[f[3]].z) / 4.0 };
+                };
+
+                avgZ.sort(function(a, b) {
+                    return b.z - a.z;
+                });
+
+                for (var fi = 0; fi < faces.length; fi++) {
+                    //  console.log(faces, fi);
+                    var fa = faces[avgZ[fi].index];
+                    // var fa = faces[fi];
+
+                    //  console.log(t[fa[0]].x, t[fa[0]].y);
+
+                    ctx.fillStyle = colors[avgZ[fi].index];
+                    ctx.beginPath();
+                    ctx.moveTo(t[fa[0]].x, t[fa[0]].y);
+
+                    ctx.lineTo(t[fa[1]].x, t[fa[1]].y);
+                    ctx.lineTo(t[fa[2]].x, t[fa[2]].y);
+                    ctx.lineTo(t[fa[3]].x, t[fa[3]].y);
+                
+
+
+                    ctx.closePath();
+                    ctx.fill();
+
+                }
+                //  throw "break";
+
+                // ctx.drawImage(state.texture, t[0].x, t[0].y, t[3].x - t[0].x, t[3].y - t[0].y);
+                //ctx.fillStyle = "rgb(255,0,0)";
+                //ctx.beginPath();
+
+                //ctx.moveTo(t[0].x, t[0].y);
+                //ctx.lineTo(t[1].x, t[1].y);
+                //ctx.lineTo(t[3].x, t[3].y);
+                //ctx.lineTo(t[2].x, t[2].y);
+                //ctx.lineTo(t[0].x, t[0].y);
+                //ctx.closePath();
+                //ctx.fill();
+            }
+
+            this.state.angle += 0.003;
+
+        }).setState({
+            d: 0,
+            fov: 500,
+            angle: 0.004,
+            texture: generateTexture(),
+            m: buildings(numG),
+            c: colors
+        });
+      
+
+        engine.addEntity(sea);
+
+        engine.start();
+
+    });
+
+    window.onerror = function(err) {
+        engine.start();
+    };
+
+</script>
+
+</body>
+</html>

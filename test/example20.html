@@ -1,0 +1,320 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+
+    <style>
+        body {
+            margin:0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        canvas {
+            background: #000;
+        }
+
+        #wrapper {
+            position: absolute;
+            margin-left: auto;
+            margin-right: auto;
+            top: 1em;
+            width: 100%;
+            height: 100%;
+            padding: 0;
+        }
+
+        #log {
+            position: absolute;
+            right: 1em;
+            width: 400px;
+            top: 1em;
+            background: #dadada;
+            min-height: 70%;
+            padding: 10px;
+            font-size: 80%;
+        }
+    </style>
+</head>
+<body>
+    <div id="wrapper">
+        <canvas id="surface" width="720" height="405"></canvas>
+    </div>
+
+   
+    <script src="../src/noc.engine.latest.js"></script>
+    <script>
+     
+
+    </script>
+
+
+    <script>
+
+        var engine, landscape,assets;
+
+
+        // move to Noc.Utils
+        var imageToImageData = function (image) {
+          
+            var canvas = document.createElement('canvas');
+            canvas.width = image.width;
+            canvas.height = image.height;
+            var context = canvas.getContext("2d");
+            context.drawImage(image, 0, 0);
+            return context.getImageData(0, 0, image.width, image.height);
+        };
+
+        var imageDataToArrayR = function (imageData) {
+            var temp = {
+                width: imageData.width,
+                height: imageData.height,
+                data: []
+            };
+            for (var i = 0; i < imageData.data.length / 4; i++) {
+                temp.data[i] = imageData.data[i * 4];
+            }
+            return temp;
+        };
+
+        var imageDataToArray = function (imageData) {
+            var temp = {
+                width: imageData.width,
+                height: imageData.height,
+                data: []
+            };
+            for (var i = 0; i < imageData.data.length; i++) {
+                temp.data[i] = imageData.data[i];
+            }
+            return temp;
+        };
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+
+            // load the textures.
+            // TODO: should use the Perlin Noise lib to generate heightmap instad
+            assets = new Noc.Assets({
+                images: ["assets/hm.jpg", "assets/map.jpg"]
+            }, function () {
+
+
+
+              
+               
+                heightmap = imageDataToArrayR(assets.getImageData("assets/hm.jpg"));
+                texture = assets.getImageData("assets/map.jpg");
+
+
+                main();
+
+
+              
+
+            });
+
+
+            engine = new Noc.Engine("#surface", null, $("#wrapper"));
+
+            var main = function () {
+
+
+                // set up buffer
+                offscreenCanvas = document.createElement('canvas');
+                offscreenCanvas.width = 160;
+                offscreenCanvas.height = 100;;
+                offscreenContext = offscreenCanvas.getContext("2d");
+
+            
+
+
+           
+            landscape = new Noc.Entity("elevated", function (render,a,b) {
+
+
+               
+
+                var onscreenContext = render.ctx;
+                var offscreenContext = this.state.buffers[0].context;
+                var frame = this.state.frame;
+                var constants = this.state.constants;
+                var position = this.state.position;
+
+                offscreenContext.fillStyle = "rgba(" + constants.color.fog[0] + "," + constants.color.fog[1] + "," + constants.color.fog[2] + ",0.5)";
+                offscreenContext.fillRect(0, 0, constants.screen.width, constants.screen.height);
+
+                frame = offscreenContext.getImageData(0, 0, constants.screen.width, constants.screen.height);
+
+                var image = frame.data;
+
+                var doff = constants.pov.depthOfField / 4;
+                var c1 = constants.screen.height / 2;
+                var c2 = constants.screen.distance * position.z;
+
+                for (var i = 0; i < constants.screen.width; i++) {
+                    var orientation = position.a - constants.pov.horizontalOpening * (1 - i * 2 / constants.screen.width);
+                    var progression = { x: Math.cos(orientation), y: Math.sin(orientation) };
+
+                    var distanceProbed = 0;
+                    var screenProjectedTop = 0;
+                    var oldHeight = 0;
+                    var oldRenderCache = false;
+                    var summit = false;
+
+                    while (distanceProbed < constants.pov.depthOfField && screenProjectedTop < constants.screen.height) {
+                     
+                        distanceProbed += (distanceProbed < doff) ? 2 : (distanceProbed < 2 * doff) ? 4 : (distanceProbed < 3 * doff) ? 8 : 16;
+                        var probe = { 
+                            x: Math.abs(Math.ceil(position.x + distanceProbed * progression.x)),
+                            y: Math.abs(Math.ceil(position.y + distanceProbed * progression.y))
+                        };
+                        var dataIndex = heightmap.width * (probe.y % heightmap.height) + (probe.x % heightmap.width);
+
+                     
+                        var height = heightmap.data[dataIndex];
+                        if (height < oldHeight) {
+                            oldHeight = height;
+                            continue;
+                        }
+                        oldHeight = height;
+
+                        var projectedHeight = Math.min(Math.ceil(c1 - (c2 - constants.screen.distance * height) / distanceProbed), constants.screen.height);
+
+                       
+                        if (projectedHeight > screenProjectedTop) {
+                            var textureDataIndex = (texture.width * (probe.y % texture.height) + (probe.x % texture.width)) * 4;
+                            var textureCache = [texture.data[textureDataIndex], texture.data[textureDataIndex + 1], texture.data[textureDataIndex + 2]];
+
+                            var fillGoal = Math.max(constants.screen.height - projectedHeight, 0);
+                            var fogFactor = Math.min(distanceProbed, constants.pov.depthOfField) / constants.pov.depthOfField;
+                            var invFogFactor = (1 - fogFactor);
+
+                           
+                            var renderCache = {
+                                r: invFogFactor * textureCache[0] + fogFactor * constants.color.fog[0],
+                                g: invFogFactor * textureCache[1] + fogFactor * constants.color.fog[1],
+                                b: invFogFactor * textureCache[2] + fogFactor * constants.color.fog[2]
+                            };
+                         //   //if (oldRenderCache && summit) {
+                         //       var previousIndex = (i + constants.screen.width * (constants.screen.height - screenProjectedTop + 1)) * 4;
+                         //       image[previousIndex] = Math.ceil(0.5 * renderCache.r + 0.5 * oldRenderCache.r);
+                         //       image[previousIndex + 1] = Math.ceil(0.5 * renderCache.g + 0.5 * oldRenderCache.g);
+                         //       image[previousIndex + 2] = Math.ceil(0.5 * renderCache.b + 0.5 * oldRenderCache.b);
+                         ////   }
+                            oldRenderCache = renderCache;
+
+                            // render
+                            for (var j = (constants.screen.height - screenProjectedTop) ; j > fillGoal; j--) {
+                                image[(i + j * constants.screen.width) * 4] = Math.ceil(renderCache.r);
+                                image[(i + j * constants.screen.width) * 4 + 1] = Math.ceil(renderCache.g);
+                                image[(i + j * constants.screen.width) * 4 + 2] = Math.ceil(renderCache.b);
+                                image[(i + j * constants.screen.width) * 4 + 3] = 255;
+                            }
+                            screenProjectedTop = projectedHeight;
+                            summit = false;
+                        } else if (screenProjectedTop > projectedHeight) {
+                            summit = true;
+                        }
+                    }
+
+                    // 3) if the top is lower than the top of the screen we fill it
+                    if (position.antialiasing) {
+                        if ((constants.screen.height - screenProjectedTop + 1) >= 0) {
+                            var j = (i + (constants.screen.height - screenProjectedTop + 1) * constants.screen.width) * 4;
+                            image[j] = Math.ceil(0.5 * image[j] + 0.5 * constants.color.fog[0]);
+                            image[j + 1] = Math.ceil(0.5 * image[j + 1] + 0.5 * constants.color.fog[1]);
+                            image[j + 2] = Math.ceil(0.5 * image[j + 2] + 0.5 * constants.color.fog[2]);
+                        }
+                    }
+                }
+                frame.data = image;
+                offscreenContext.putImageData(frame, 0, 0);
+                onscreenContext.drawImage(offscreenCanvas, 0, 0, render.width, render.height);
+
+                //position.x += 4
+
+
+             //   position.a = Math.cos(a) * 10;
+
+
+                position.y += 0.5;
+                position.x += 1.5;
+              
+
+
+
+            }).init(
+            {
+               
+                buffers: [{
+                    canvas: offscreenCanvas,
+                    context: offscreenContext
+                }],
+                frame: offscreenContext.getImageData(0, 0, 160, 100),
+
+                constants:
+            {
+
+                highres: true,
+                screen: {
+                    height: 100,
+                    width: 160,
+                    zoom: 1
+                },
+
+                pov: {
+                    verticalOpening: 0.4,
+                    depthOfField: 1000
+                },
+
+                color: {
+                    fog: [250, 250, 250, 0.1]
+                },
+
+                init: function () {
+                  
+                    this.pov.horizontalOpening = Math.atan(this.pov.verticalOpening) * this.screen.width / this.screen.height;
+                    this.screen.distance = this.screen.width / 2 / Math.tan(this.pov.horizontalOpening);
+                }
+            },
+                position :{
+                    x: 450,
+                    y: 0,
+                    z: 180,
+                    a: Math.PI / 2,
+                    antialiasing: false
+                },
+              
+            });
+
+
+           
+
+            engine.addEntity(landscape, function () {
+                landscape.state.constants.init()
+                engine.start()
+            });
+
+         
+
+            }
+
+
+
+        });
+
+        window.onerror = function () {
+            engine.start();
+        };
+
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <meta charset="utf-8" />
+    <style>
+        body {
+            padding: 1em;
+            overflow: hidden;
+        }
+
+        html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        canvas {
+            background: #000;
+        }
+
+        #wrapper {
+            position: absolute;
+            margin-left: auto;
+            margin-right: auto;
+            top: 1em;
+            width: 720px;
+            height: 405px;
+            padding: 0;
+        }
+
+        #log {
+            position: absolute;
+            right: 1em;
+            width: 400px;
+            top: 1em;
+            background: #dadada;
+            min-height: 70%;
+            padding: 10px;
+            font-size: 80%;
+        }
+    </style>
+</head>
+<body>
+    <div id="wrapper">
+
+        <canvas id="surface" width="720" height="405"></canvas>
+    </div>
+
+    <div id="log">
+
+    </div>
+
+
+    <script src="../src/noc.engine.latest.js"></script>
+    <script src="../libs/triangulate.js"></script>
+    <script>
+
+        var camera = {
+            fov: 2000,
+            d: 20.0
+        };
+
+
+
+        var tx = function (w, h, hex) {
+            var c = document.createElement("canvas");
+            c.width = w;
+            c.height = h;
+            var ctx = c.getContext("2d");
+            ctx.fillStyle = hex;
+            ctx.fillRect(0, 0, w, h);
+            return c;
+        }
+
+        window.onerror = function () {
+            engine.start();
+        }
+        var trace = function (t, d) {
+            var div = document.createElement("div");
+            div.textContent = t;
+            var data = document.createElement("p");
+            data.textContent = JSON.stringify(d);
+            div.appendChild(data);
+            $("#log").appendChild(div);
+        }
+
+        var engine;
+
+        var triObject;
+        var squareObject;
+
+        var matrix;
+
+
+        document.addEventListener("DOMContentLoaded", function (evt) {
+
+            trace("DOMContentLoaded", {});
+
+            engine = new Noc.Engine("#surface", null, $("#wrapper"));
+
+            // Create a triangle object
+            triObject = new Noc.Object3D();
+            triObject.verticles.push(new Noc.Point3D(0.5, -1, 0, 0, 0));
+            triObject.verticles.push(new Noc.Point3D(-1, 1, 0, 1, 0));
+            triObject.verticles.push(new Noc.Point3D(1, 1, 0, 0, 1));
+            triObject.faces.push([0, 1, 2]);
+
+            trace("triObject", triObject);
+
+
+            // Create a Quad
+            squareObject = new Noc.Object3D();
+
+            var quad = [];
+            // new Noc.Point3D(x,y,z,u,v)
+            quad.push(new Noc.Point3D(-1, -1, 0, 0, 0));
+            quad.push(new Noc.Point3D(1, -1, 0, 1, 0));
+            quad.push(new Noc.Point3D(1, 1, 0, 1, 1));
+            quad.push(new Noc.Point3D(-1, 1, 0, 0, 1));
+
+            var quadTriangulated = Noc.Helpers.triangulate(
+                Noc.Helpers.flattenVerticles(quad)
+            );
+            squareObject.verticles = quadTriangulated.map(function (v) {
+                return quad[v]; // get the Noc.Point3D's
+            });;
+
+            squareObject.faces = Noc.Helpers.getFaces(quadTriangulated, 3);
+            trace("squareObject", squareObject);
+
+            // set up a Noc.Entiry for the triangle
+            var triEntity = new Noc.Entity("tri", function (frame, timestamp, total) {
+                var state = this.state;
+                state.object3D.rotateZ(state.rotationZ);
+                var projected = state.object3D.project(frame.width, frame.height, state.camera.fov, -state.camera.d);
+                engine.drawing.drawTriangles(state.material,
+                    projected,
+                    state.object3D.faces);
+            }).setState({
+                rotationZ: (2 * Math.PI) / 10,
+                camera: camera,
+                object3D: triObject,
+                material: Noc.Texture.basicTexture(10, 10, "rgba(127,0,255,0.5)"),
+            });
+
+            var squareEntity = new Noc.Entity("square", function (frame, timestamp, total) {
+                var state = this.state;
+              
+                state.object3D.rotateX(state.rotationX);
+                var projected = state.object3D.project(frame.width, frame.height, state.camera.fov, state.camera.d + 4);
+
+                engine.drawing.drawTriangles(state.material,
+                     projected,
+                     state.object3D.faces);
+
+
+            }).setState({
+                rotationX: (2 * Math.PI) / 15,
+                material: Noc.Texture.basicTexture(1, 1, "rgba(255,0,255,0.5)"),
+                camera: camera,
+                object3D: squareObject
+            });
+            engine.addEntity(squareEntity);
+            engine.addEntity(triEntity);
+            engine.start();
+
+        });
+
+    </script>
+</body>
+</html>
