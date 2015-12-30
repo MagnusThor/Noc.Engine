@@ -254,6 +254,56 @@
 
         )();
 
+        var Tree = (function () {
+            var deg_to_rad = Math.PI / 180.0;
+
+           
+
+
+            var ctor = function (start, stop) {
+
+
+                function drawLine(ctx, x1, y1, x2, y2, brightness) {
+                    ctx.strokeStyle = "rgba(255,255,255,0.9)";
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                }
+
+                function drawTree(ctx,x1, y1, angle, offset, depth) {
+                    if (depth == 9) {
+                        var x2 = x1 + (Math.cos(-90 * deg_to_rad) * depth * 8.0);
+                        var y2 = y1 + (Math.sin(-90 * deg_to_rad) * depth * 8.0);
+                        drawLine(ctx,x1, y1, x2, y2, depth);
+                        drawTree(ctx,x2, y2, -90 - offset, offset, depth - 1);
+                        drawTree(ctx,x2, y2, -90 + offset, offset, depth - 1);
+
+                    } else if (depth != 0) {
+                        var x2 = x1 + (Math.cos(angle * deg_to_rad) * depth * 8.0);
+                        var y2 = y1 + (Math.sin(angle * deg_to_rad) * depth * 8.0);
+                        drawLine(ctx,x1, y1, x2, y2, depth);
+                        drawTree(ctx,x2, y2, angle - offset, offset, depth - 1);
+                        drawTree(ctx,x2, y2, angle + offset, offset, depth - 1);
+                    }
+                };
+               
+                this.entity = new Noc.Entity("tree", function (renderer,tm,ts) {
+
+                    var ctx = renderer.ctx;
+
+                
+                    if (currentFreq > 20) {
+
+                        ctx.beginPath();
+                        ctx.lineWidth = 10;
+                    drawTree(ctx, renderer.width / 2, renderer.height, 90,currentFreq , (9));
+                    ctx.closePath();
+                    ctx.stroke();
+                    }
+                },start,stop);
+            };
+            return ctor; s
+        })();
+
         /// Plasma entity
         var Plasma = (function () {
             var ctor = function (start, stop) {
@@ -368,7 +418,7 @@
             // load the textures.
             // TODO: should use the Perlin Noise lib to generate heightmap instad
             assets = new Noc.Assets({
-                images: ["assets/hm.jpg", "assets/tex03.jpg", "assets/fakescroller.png", "assets/happy-new.jpg"]
+                images: ["assets/hm.jpg", "assets/tex03.jpg", "assets/scroller-1.png", "assets/happy-new.jpg"]
             }, function () {
 
                 heightmap = imageDataToArrayR(assets.getImageData("assets/hm.jpg"));
@@ -381,33 +431,38 @@
             // story
             var timeLine = {
 
-                strobe: {
+                trees: {
                     start: 1,
-                    stop: 31000,
+                    stop:20000,
+                },
+
+                strobe: {
+                    start: 20000,
+                    stop: 41000,
                 },
                 fade: {
-                    start: 500,
-                    stop: 31000
+                    start: 25000,
+                    stop: 61000
                 },
                 scroller: {
-                    start: 30500,
-                    stop: 40000,
+                    start: 50500,
+                    stop: 70000,
                 },
                 plasma: {
-                    start: 40000,
-                    stop: 10000
+                    start: 70000,
+                    stop: 90000
                 },
                 particles: {
-                    start: 50000,
-                    stop: 30000,
+                    start: 60000,
+                    stop: 40000,
                 },
                 landscape: {
-                    start: 80000,
-                    stop: 60000
+                    start: 90000,
+                    stop: 70000
                 }
                 , happyNew: {
                     start: 80000 + 6000,
-                    stop: 90000
+                    stop: 100000
 
                 },
             }
@@ -684,12 +739,20 @@
 
                     // Make the analyzer node accessable...
 
+                    var tree = new Tree(timeLine.trees.start, timeLine.trees.stop);
+
+
+                    tree.entity.onLifetimeend = function () {
+                        engine.removeEntity(this);
+                    };
+
+                    engine.addEntity(tree.entity);
+
 
                     analyzer = that._analyzerNode
 
                     var outro = new HappyNew(timeLine.happyNew.start, timeLine.happyNew.stop, assets.getImage("assets/happy-new.jpg"));
 
-                    console.log(outro.entity);
 
                     engine.addEntity(outro.entity);
 
@@ -710,11 +773,13 @@
                     engine.addEntity(fade.entity);
 
 
+               
+
 
                     // Set up Scroller
                     var scroller = new Scroller(
                        timeLine.scroller.start, timeLine.scroller.stop,
-                        assets.getImage("assets/fakescroller.png"));
+                        assets.getImage("assets/scroller-1.png"));
 
                     scroller.entity.onLifetimeend = function () {
 
@@ -772,7 +837,7 @@
                 }, function () {
 
                 });
-                ScriptNodePlayer.getInstance().loadMusicFromURL("Ennio_Morricone.zip", {
+                ScriptNodePlayer.getInstance().loadMusicFromURL("So-Phisticated_III_part_1.zip", {
                     basePath: "assets/sid/"
                 }, function () { });
 
