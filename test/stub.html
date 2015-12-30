@@ -1,0 +1,131 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Pantaloon</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        canvas {
+            background: #000;
+        }
+
+        #wrapper {
+            position: absolute;
+            margin-left: auto;
+            margin-right: auto;
+            width: 100%;
+            height: 100%;
+            padding: 0;
+        }
+
+        #time {
+            z-index: 1050;
+            position: absolute;
+            left: 1em;
+            width: 200px;
+            top: 1em;
+            background: #ff0000;
+            color: #ffffff;
+            height: 20px;
+            padding: 10px;
+        }
+    </style>
+
+</head>
+<body>
+    <div id="time"></div>
+    <div id="wrapper">
+        <canvas id="surface" width="720" height="405"></canvas>
+    </div>
+
+
+    <script src="//magnusthor.github.io/Noc.Engine/src/noc.engine.latest.js"></script>
+    <script>
+
+        // globals
+        var engine;
+
+        var box;
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+            // allt laddat
+
+            // locals
+
+            var foo, bar;
+
+
+            engine = new Noc.Engine("#surface", null, $("#wrapper"));
+
+            engine.onFrame = function () {
+                // do op
+            };
+
+
+            box = new Noc.Entity("fade", function (frame, frameTime, totalTime) {
+
+
+                var ctx = frame.ctx; // paint
+                var state = this.state; // x,y,v etc...
+
+                var alpha = state.alpha;
+
+                var text = state.textBlocks[state.p];
+
+                var width = frame.width;
+                var height = frame.height;
+                ctx.font = "bold " +  state.alpha * 190 + "pt Arial";
+                ctx.fillStyle = "rgba(255, 255, 255, "+ alpha + ")";
+                ctx.fillText(text, width / 2 -
+                    (ctx.measureText(text).width) / 2
+                    , height / 2);
+                    state.alpha -= frameTime * state.f;
+                    if (state.p < state.textBlocks.length-1) {
+                    if (state.alpha < 0) {
+                        state.alpha = 1.0;
+                        state.p ++
+                    }
+                    }
+
+                $("#time").textContent = (totalTime / 1000).toFixed(2);
+
+
+
+            }).setState({
+               
+                alpha: 1.0,
+                f: 0.5,
+                p:0,
+                textBlocks: ["PANTALOON","AND","BAGZY","WANNA","SAY","HAPPY","NEW","YEAR"]
+
+            });
+
+
+            engine.addEntity(box); // lägg till entitet...
+
+            engine.start(); // starta rendering...
+
+           
+
+
+
+        });
+
+        window.onerror = function () {
+            engine.stop();
+        }
+
+    </script>
+</body>
+</html>

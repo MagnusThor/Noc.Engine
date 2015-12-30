@@ -12,6 +12,7 @@
 
         html {
             height: 100%;
+          
             margin: 0;
             padding: 0;
         }
@@ -25,8 +26,8 @@
             margin-left: auto;
             margin-right: auto;
           
-            width: 100%;
-            height: 100%;
+            width: 720px;
+            height: 405px;
             padding: 0;
         }
 
@@ -42,10 +43,24 @@
             padding: 10px;
             
         }
+        #freq{
+             z-index:1050;
+            position: absolute;
+            left: 1em;
+            width: 200px;
+            bottom: 1em;
+            background: #ff00ff;
+            color:#ffffff;
+            height: 20px;
+            padding: 10px;
+        }
+        .hide{
+            display:none;
+        }
     </style>
 </head>
 <body>
-    <div id="time"></div>
+    <div id="time"></div><div id="freq" class="hide"></div>
     <div id="wrapper">
         <canvas id="surface" width="720" height="405"></canvas>
     </div>
@@ -64,19 +79,19 @@
 
     
       
-        var engine, landscape, assets;
+        var engine, landscape, assets, analyzer, currentFreq = 0;
     
 
         Particle = function () {
 
 
             SCALE = {
-                MIN: 5,
-                MAX: 80
+                MIN: 15,
+                MAX: 30
             };
             SPEED = {
                 MIN: 0.2,
-                MAX: 1
+                MAX: 5
             };
             ALPHA = {
                 MIN: 0.8,
@@ -175,21 +190,14 @@
         }
 
 
+        // Particle / Pills entity
         var Pills = (function () {
-         
-            var ctor = function (source, num) {
-
-                var bgAnalyzer = source._analyzerNode;
-                // set up particles
+            var ctor = function (start,stop,source, num) {
+                var bgAnalyzer = analyzer || source;
                 this.particles = [];
                 for (i = j = 0, ref = num - 1; j <= ref; i = j += 1) {
-
                     var x = random(this.width);
                     var y = random(this.height * 2);
-
-
-                 
-
                     particle = new Particle(x, y);
                     particle.energy = random(particle.band / 256);
                     this.particles.push(particle);
@@ -224,7 +232,7 @@
                        particle.draw(ctx);
                     };
 
-                }, 11000, 11000 + 5000).init({
+                }, start, start+stop).init({
                     particles: this.particles
                 });
                 
@@ -235,40 +243,109 @@
       
         )();
 
-        var Spectrum = (function () {
-            var ctor = function (source) {
-                var bgAnalyzer = source._analyzerNode;
-                this.entity = new Noc.Entity("spectrum", function (viewport,tfs,fm) {
-                    var ctx = viewport.ctx;
-                    var array = new Uint8Array(bgAnalyzer.frequencyBinCount);
-                    bgAnalyzer.getByteFrequencyData(array);
-                    if (array.length > 1) {
-                        var a = array.slice(1, 9)
-                    for (var i = 0; i < (a.length) ; i++) {
-                        var value = a[i];
-                        if (value > 1) {
-                            o = value;
-                            var p = pos[i];
-                            ctx.beginPath();
-                            ctx.arc(p.x,p.y, (value), s, 2 * Math.PI);
-                            ctx.fillStyle = "rgba(0," + value+  ",0, " +  127 / value + ")";
-                            ctx.fill();
-                            if (q > 50) {
-                                q -= tfs;
-                            }
+         /// Plasma entity
+        var Plasma = (function () {
+            var ctor = function (start,stop) {
+                var rad = Math.PI / 180;
+                this.entity = new Noc.Entity("plasma", function (renderer) {
+                    var state = this.state;
+                    var res = state.res;
+                    var xd = renderer.width / 48;
+                    var yd = renderer.height / 48;
+
+                    var ctx = renderer.ctx;
+
+                    for (var x = 0; x < res; x++) {
+
+
+                        state.aa += 0.0005 * Math.cos(rad * x * state.a[0]);
+                        state.ac += 0.0010 * Math.sin(rad * (res - x) * state.a[2]);
+
+
+                        for (var y = 0; y < res; y++) {
+
+                            state.ab += 0.001 * Math.cos(rad * y * state.a[1]);
+                            state.ad += 0.001 * Math.sin(rad * (res - y) * state.a[3]);
+
+                            var h = x * 8 * Math.sin(rad * (state.aa + state.ab) * state.a[4]),
+                                j = y * 8 * Math.cos(rad * (state.ac + state.ad) * state.a[5]),
+                                k = (x * state.a[0] + y * state.a[1]) * 32 * Math.sin(rad * ((res - x) * h + (y - res) * h) * state.a[2] / 720),
+                                l = (res * state.a[3] - x * state.a[3] + (res * state.a[4] - y * state.a[4])) * 32 * Math.sin(rad * (x * h + y * j) * state.a[5] / 720);
+
+                            h = 48 * Math.cos(rad * h) + 42 * Math.cos(rad * j);
+                            state.cr = 128 + Math.ceil(42 * Math.cos(rad * k) + h);
+                            state.cg = 128 + Math.ceil(42 * Math.cos(rad * l) + h);
+                            state.cb = Math.ceil((state.cr + state.cg) / 2 - h * 2);
+
+                            ctx.fillStyle = 'rgb(' + state.cr + ',' + state.cg + ',' + state.cb + ')';
+                            ctx.fillRect(y * xd, x * yd, xd, yd);
+
                         }
-                    }
+
                     }
 
-                }, 10
-                );
+                },start, stop).init(
+                    {
+                        res: 48,
+                        aa: 0,
+                        ab: 0,
+                        ac: 0,
+                        ad: 0,
+                        cr: 16,
+                        cg: 128,
+                        cb: 128,
+                        a: (function (count) {
+                            var res = [];
+                            for (var i = 0; i < (count | 256) ; i++) {
+                                res[i] = Math.ceil(Math.random(0, 1) * 3 + 1);
+                            }
+                            return res;
+                        })()
+
+                    });
+
+             
             };
             return ctor;
+           
         })();
 
 
+      
 
 
+
+        // TextFade entity
+        var TextFade = (function () {
+            var ctor = function (start, stop) {
+                this.entity = new Noc.Entity("fade", function (frame, frameTime, totalTime) {
+                    var ctx = frame.ctx;
+                    var state = this.state;
+                    var alpha = state.alpha;
+                    var text = state.textBlocks[state.p];
+                    var width = frame.width;
+                    var height = frame.height;
+                    ctx.font = "bold " + state.alpha * (500) + currentFreq + "px Arial";
+                    ctx.fillStyle = "rgba(255, 255, 255, " + alpha + ")";
+                    ctx.fillText(text, width / 2 -
+                        (ctx.measureText(text).width) / 2
+                        , height / 2 + (state.alpha * (500/2)));
+                    state.alpha -= frameTime * currentFreq / 200;
+                    if (state.p < state.textBlocks.length - 1) {
+                        if (state.alpha < 0) {
+                            state.alpha = 1.0;
+                            state.p++
+                        }
+                    }
+                }, start, stop).setState({
+                    alpha: 1.0,
+                    f: 0.4,
+                    p: 0,
+                    textBlocks: ["YO!!!!", "BAGZY", "AND", "PANTALOON", "JUST", "WANT", "TO", "SAY", "HAPPY", "NEW", "YEAR"]
+                });
+            };
+            return ctor;
+        })();
      
 
 
@@ -280,73 +357,133 @@
             assets = new Noc.Assets({
                 images: ["assets/hm.jpg", "assets/tex03.jpg","assets/fakescroller.png"]
             }, function () {
-
-
-
-              
                
-                heightmap = imageDataToArrayR(assets.getImageData("assets/hm.jpg"));
-                texture = assets.getImageData("assets/tex03.jpg");
-
-
-                main();
-
-
-              
-
+            heightmap = imageDataToArrayR(assets.getImageData("assets/hm.jpg"));
+            texture = assets.getImageData("assets/tex03.jpg");
+            main();
             });
 
+
+
+            // story
+            var timeLine = {
+                strobe:{
+                    start:1,
+                    stop:31000,
+                },
+                fade: {
+                    start: 500,
+                    stop: 31000
+                },
+                scroller: {
+                    start: 30500,
+                    stop: 40000,
+                },
+                plasma: {
+                    start: 40000,
+                    stop: 10000
+                },
+                particles: {
+                    start: 50000,
+                    stop: 30000,
+                },
+                landscape: {
+                    start: 80000,
+                    stop: 60000
+                }
+            }
 
             engine = new Noc.Engine("#surface", null, $("#wrapper"));
 
 
             engine.onFrame = function (tm,timer) {
                 //  console.log(arguments);
-
                 document.querySelector("#time").textContent = (tm / 1000).toFixed(2);//.elapsed;
-              
-            };
 
+                // is there an analyzer?
+                if (analyzer) {
+                    var array = new Uint8Array(analyzer.frequencyBinCount);
+                    analyzer.getByteFrequencyData(array);
+                    var freq = floor((array.reduce(function (a, b) { return a + b })) / array.length);
+                    if (freq > 50 & freq < 60 ) {
+                    
+                        document.querySelector("#freq").textContent = floor(freq);
+                        document.querySelector("#freq").classList.remove("hide");
+                    }else
+                    {
+                        document.querySelector("#freq").classList.add("hide");
+                    }
+
+                    currentFreq = freq;
+                   
+                  
+                };
+
+            };
             document.querySelector("#time").addEventListener("click", function () {
                 engine.stop();
             });
 
-            //// Moving background 
-            //var sky = new Noc.Entity("sky", function (viewport) {
-            //    var img = this.state.sky;
-            //    var ctx = viewport.ctx;
-            //    ctx.drawImage(img, this.state.vx, 0, img.width, viewport.height);
-            //    ctx.drawImage(img, viewport.width - Math.abs(this.state.vx), 0, img.width, viewport.height);
-            //    if (Math.abs(this.state.vx) > img.width) {
-            //        this.state.vx = 0;
-            //    }
-            //    this.state.vx -= 10;
-            //});
-            //sky.init({
-            //    vx: 0,
-            //    sky: assets.getImage("/assets/images/mavri-summit.jpg")
-            //}, 16000);
+            
 
 
+            // Scroller entiry
             var Scroller = (function () {
-
-
-                var ctor = function (image) {
+                var ctor = function (start, stop, image) {
                     this.entity = new Noc.Entity("oldScroller", function (renderer) {
-
                             var img = this.state.image;
                             var ctx = renderer.ctx;
-                       
-                            ctx.drawImage(img, renderer.width - Math.abs(this.state.vx), renderer.height - (image.height), img.width, img.height);
+                            ctx.drawImage(img, renderer.width - Math.abs(this.state.vx), renderer.height - (image.height-10), img.width, img.height);
                             if (Math.abs(this.state.vx) > (img.width *2)) {
                                 this.state.vx = 0;
                             }
                             this.state.vx -= 5;
-
-                    },500,14999).setState({
+                    },start, stop).setState({
                         vx: 0,
                         image: image
                     });
+                };
+                return ctor;
+            })();
+
+
+            var Strobe = (function () {
+
+                var ctor = function (start, stop,num) {
+                    var arrPos = [];
+
+
+                    for (var i = 0; i < num; i++) {
+                        arrPos.push({
+                            x: random(1440),
+                            y: random(900)
+                        });
+                    };
+
+                    this.entity = new Noc.Entity("stobe", function (renderer,ts,tm) {
+                        var ctx = renderer.ctx;
+                        var state = this.state;
+                        if (!analyzer) return;
+                        var width = renderer.width;
+                        var height = renderer.height;
+                        ctx.globalAlpha = 0.5;
+                      //  if ((currentFreq > 50 && currentFreq < 80)) {
+                          
+                            for (var i=0 ; i < state.strobes-1; i++) {
+                                var p = state.strobePos[i];
+                                ctx.beginPath();
+                                ctx.arc(p.x, p.y, currentFreq*2, 0, 2 * Math.PI);
+                                ctx.fillStyle = "rgba(255,255,0,0.03)";
+                                ctx.fill();
+                            };
+                      //  };
+
+                  
+
+                    }, start, stop).setState({
+                        strobes: num,
+                        strobePos: arrPos
+                    });;
                 };
 
                 return ctor;
@@ -355,115 +492,114 @@
 
 
 
-            var main = function () {
-                // set up buffer
-                offscreenCanvas = document.createElement('canvas');
-                offscreenCanvas.width = 160;
-                offscreenCanvas.height = 100;;
-                offscreenContext = offscreenCanvas.getContext("2d");
+            var Landscape = (function () {
+
+                var ctor = function (start, stop) {
+                    // double buffer
+                    offscreenCanvas = document.createElement('canvas');
+                    offscreenCanvas.width = 160;
+                    offscreenCanvas.height = 100;;
+                    offscreenContext = offscreenCanvas.getContext("2d");
+
+                    this.entity = new Noc.Entity("landscape", function (render, tfs, tm) {
+                        var onscreenContext = render.ctx;
+                        var offscreenContext = this.state.buffers[0].context;
+                        var frame = this.state.frame;
+                        var constants = this.state.constants;
+                        var position = this.state.position;
+
+                        offscreenContext.fillStyle = "rgba(" + constants.color.fog[0] + "," + constants.color.fog[1] + "," + constants.color.fog[2] + ",0.4)";
+                        offscreenContext.fillRect(0, 0, constants.screen.width, constants.screen.height);
+
+                        frame = offscreenContext.getImageData(0, 0, constants.screen.width, constants.screen.height);
+
+                        var image = frame.data;
+
+                        var doff = constants.pov.depthOfField / 1;
+                        var c1 = constants.screen.height / 2;
+                        var c2 = constants.screen.distance * position.z;
+
+                        for (var i = 0; i < constants.screen.width; i++) {
+                            var orientation = position.a - constants.pov.horizontalOpening * (1 - i * 2 / constants.screen.width);
+                            var progression = { x: Math.cos(orientation), y: Math.sin(orientation) };
+
+                            var distanceProbed = 0;
+                            var screenProjectedTop = 0;
+                            var oldHeight = 0;
+                            var oldRenderCache = false;
+                            var summit = false;
+
+                            while (distanceProbed < constants.pov.depthOfField && screenProjectedTop < constants.screen.height) {
+
+                                distanceProbed += (distanceProbed < doff) ? 2 : (distanceProbed < 2 * doff) ? 4 : (distanceProbed < 3 * doff) ? 8 : 16;
+                                var probe = {
+                                    x: Math.abs(Math.ceil(position.x + distanceProbed * progression.x)),
+                                    y: Math.abs(Math.ceil(position.y + distanceProbed * progression.y))
+                                };
+                                var dataIndex = heightmap.width * (probe.y % heightmap.height) + (probe.x % heightmap.width);
 
 
-                // Create a landscape
-                landscape = new Noc.Entity("elevated", function (render, tfs, tm) {
+                                var height = heightmap.data[dataIndex];
+                                if (height < oldHeight) {
+                                    oldHeight = height;
+                                    continue;
+                                }
+                                oldHeight = height;
 
-                var onscreenContext = render.ctx;
-                var offscreenContext = this.state.buffers[0].context;
-                var frame = this.state.frame;
-                var constants = this.state.constants;
-                var position = this.state.position;
+                                var projectedHeight = Math.min(Math.ceil(c1 - (c2 - constants.screen.distance * height) / distanceProbed), constants.screen.height);
 
-                offscreenContext.fillStyle = "rgba(" + constants.color.fog[0] + "," + constants.color.fog[1] + "," + constants.color.fog[2] +",0.4)";
-                offscreenContext.fillRect(0, 0, constants.screen.width, constants.screen.height);
 
-                frame = offscreenContext.getImageData(0, 0, constants.screen.width, constants.screen.height);
+                                if (projectedHeight > screenProjectedTop) {
+                                    var textureDataIndex = (texture.width * (probe.y % texture.height) + (probe.x % texture.width)) * 4;
+                                    var textureCache = [texture.data[textureDataIndex], texture.data[textureDataIndex + 1], texture.data[textureDataIndex + 2]];
 
-                var image = frame.data;
+                                    var fillGoal = Math.max(constants.screen.height - projectedHeight, 0);
+                                    var fogFactor = Math.min(distanceProbed, constants.pov.depthOfField) / constants.pov.depthOfField;
+                                    var invFogFactor = (1 - fogFactor);
 
-                var doff = constants.pov.depthOfField / 1;
-                var c1 = constants.screen.height / 2;
-                var c2 = constants.screen.distance * position.z;
 
-                for (var i = 0; i < constants.screen.width; i++) {
-                    var orientation = position.a - constants.pov.horizontalOpening * (1 - i * 2 / constants.screen.width);
-                    var progression = { x: Math.cos(orientation), y: Math.sin(orientation) };
-
-                    var distanceProbed = 0;
-                    var screenProjectedTop = 0;
-                    var oldHeight = 0;
-                    var oldRenderCache = false;
-                    var summit = false;
-
-                    while (distanceProbed < constants.pov.depthOfField && screenProjectedTop < constants.screen.height) {
-                     
-                        distanceProbed += (distanceProbed < doff) ? 2 : (distanceProbed < 2 * doff) ? 4 : (distanceProbed < 3 * doff) ? 8 : 16;
-                        var probe = { 
-                            x: Math.abs(Math.ceil(position.x + distanceProbed * progression.x)),
-                            y: Math.abs(Math.ceil(position.y + distanceProbed * progression.y))
-                        };
-                        var dataIndex = heightmap.width * (probe.y % heightmap.height) + (probe.x % heightmap.width);
-
-                     
-                        var height = heightmap.data[dataIndex];
-                        if (height < oldHeight) {
-                            oldHeight = height;
-                            continue;
-                        }
-                        oldHeight = height;
-
-                        var projectedHeight = Math.min(Math.ceil(c1 - (c2 - constants.screen.distance * height) / distanceProbed), constants.screen.height);
-
-                       
-                        if (projectedHeight > screenProjectedTop) {
-                            var textureDataIndex = (texture.width * (probe.y % texture.height) + (probe.x % texture.width)) * 4;
-                            var textureCache = [texture.data[textureDataIndex], texture.data[textureDataIndex + 1], texture.data[textureDataIndex + 2]];
-
-                            var fillGoal = Math.max(constants.screen.height - projectedHeight, 0);
-                            var fogFactor = Math.min(distanceProbed, constants.pov.depthOfField) / constants.pov.depthOfField;
-                            var invFogFactor = (1 - fogFactor);
-
-                           
-                            var renderCache = {
-                                r: invFogFactor * textureCache[0] + fogFactor * constants.color.fog[0],
-                                g: invFogFactor * textureCache[1] + fogFactor * constants.color.fog[1],
-                                b: invFogFactor * textureCache[2] + fogFactor * constants.color.fog[2]
-                            };
-                            oldRenderCache = renderCache;
-                            // render
-                            for (var j = (constants.screen.height - screenProjectedTop) ; j > fillGoal; j--) {
-                                image[(i + j * constants.screen.width) * 4] = Math.ceil(renderCache.r);
-                                image[(i + j * constants.screen.width) * 4 + 1] = Math.ceil(renderCache.g);
-                                image[(i + j * constants.screen.width) * 4 + 2] = Math.ceil(renderCache.b);
-                                image[(i + j * constants.screen.width) * 4 + 3] = 255;
+                                    var renderCache = {
+                                        r: invFogFactor * textureCache[0] + fogFactor * constants.color.fog[0],
+                                        g: invFogFactor * textureCache[1] + fogFactor * constants.color.fog[1],
+                                        b: invFogFactor * textureCache[2] + fogFactor * constants.color.fog[2]
+                                    };
+                                    oldRenderCache = renderCache;
+                                    // render
+                                    for (var j = (constants.screen.height - screenProjectedTop) ; j > fillGoal; j--) {
+                                        image[(i + j * constants.screen.width) * 4] = Math.ceil(renderCache.r);
+                                        image[(i + j * constants.screen.width) * 4 + 1] = Math.ceil(renderCache.g);
+                                        image[(i + j * constants.screen.width) * 4 + 2] = Math.ceil(renderCache.b);
+                                        image[(i + j * constants.screen.width) * 4 + 3] = 255;
+                                    }
+                                    screenProjectedTop = projectedHeight;
+                                    summit = false;
+                                } else if (screenProjectedTop > projectedHeight) {
+                                    summit = true;
+                                }
                             }
-                            screenProjectedTop = projectedHeight;
-                            summit = false;
-                        } else if (screenProjectedTop > projectedHeight) {
-                            summit = true;
+
+                            // 3) if the top is lower than the top of the screen we fill it
+                            if (position.antialiasing) {
+                                if ((constants.screen.height - screenProjectedTop + 1) >= 0) {
+                                    var j = (i + (constants.screen.height - screenProjectedTop + 1) * constants.screen.width) * 4;
+                                    image[j] = Math.ceil(0.5 * image[j] + 0.5 * constants.color.fog[0]);
+                                    image[j + 1] = Math.ceil(0.5 * image[j + 1] + 0.5 * constants.color.fog[1]);
+                                    image[j + 2] = Math.ceil(0.5 * image[j + 2] + 0.5 * constants.color.fog[2]);
+                                }
+                            }
                         }
-                    }
-
-                    // 3) if the top is lower than the top of the screen we fill it
-                    if (position.antialiasing) {
-                        if ((constants.screen.height - screenProjectedTop + 1) >= 0) {
-                            var j = (i + (constants.screen.height - screenProjectedTop + 1) * constants.screen.width) * 4;
-                            image[j] = Math.ceil(0.5 * image[j] + 0.5 * constants.color.fog[0]);
-                            image[j + 1] = Math.ceil(0.5 * image[j + 1] + 0.5 * constants.color.fog[1]);
-                            image[j + 2] = Math.ceil(0.5 * image[j + 2] + 0.5 * constants.color.fog[2]);
-                        }
-                    }
-                }
-                frame.data = image;
-                offscreenContext.putImageData(frame, 0, 0);
-                onscreenContext.drawImage(offscreenCanvas, 0, 0, render.width, render.height);
-                position.y += 5;
-          
-              
+                        frame.data = image;
+                        offscreenContext.putImageData(frame, 0, 0);
+                        onscreenContext.drawImage(offscreenCanvas, 0, 0, render.width, render.height);
+                        position.y += 5;
 
 
 
-            },15000).init(
+
+
+                    }, start,stop).init(
                     {
-               
+
                         buffers: [{
                             canvas: offscreenCanvas,
                             context: offscreenContext
@@ -490,12 +626,12 @@
                         },
 
                         init: function () {
-                  
+
                             this.pov.horizontalOpening = Math.atan(this.pov.verticalOpening) * this.screen.width / this.screen.height;
                             this.screen.distance = this.screen.width / 2 / Math.tan(this.pov.horizontalOpening);
                         }
                     },
-                        position :{
+                        position: {
                             x: 450,
                             y: 0,
                             z: 200,
@@ -503,38 +639,85 @@
                             antialiasing: false
                         },
                     });
+                }
+                return ctor;
 
+            })();
 
-      
-
-           
-
+            var main = function () {
 
                 ScriptNodePlayer.createInstance(new SIDBackendAdapter(), "", [], true, function () { }, function () {
                     this.play();
+                    var that = this; // SID Tune
 
-                    var that = this;
-
-
-                    var scroller = new Scroller(assets.getImage("assets/fakescroller.png"));
-
-                    engine.addEntity(scroller.entity);
+                    // Make the analyzer node accessable...
 
 
-                    scroller.entity.onLifetimeend = function () {
+                    analyzer = that._analyzerNode
+
+
+                    fade = new TextFade(timeLine.fade.start,timeLine.fade.stop);
+                    fade.entity.onLifetimeend = function () {
                         engine.removeEntity(this);
                     };
 
+                    strobe = new Strobe(timeLine.strobe.start, timeLine.strobe.stop, 600);
 
-                    var particleEffect = new Pills(that, 64);
 
+                    strobe.entity.onLifetimeend = function () {
+                        engine.removeEntity(this);
+                    };
+
+                    engine.addEntity(strobe.entity);
+                    engine.addEntity(fade.entity);
+
+
+
+                    // Set up Scroller
+                    var scroller = new Scroller(
+                       timeLine.scroller.start, timeLine.scroller.stop,
+                        assets.getImage("assets/fakescroller.png"));
+
+                    scroller.entity.onLifetimeend = function () {
+                     
+                        engine.removeEntity(this);
+                    };
+                    engine.addEntity(scroller.entity);
+
+
+                    // Set up plasma
+                    plasma = new Plasma(timeLine.plasma.start, timeLine.plasma.stop);
+                    plasma.entity.onLifetimeend = function () {
+                        engine.removeEntity(this);
+                      
+                    };
+                    engine.addEntity(plasma.entity);
+
+
+                    // Setup Particles
+                    var particleEffect = new Pills(timeLine.particles.start, timeLine.particles.stop, that,64); // Where that is the SID
                     engine.addEntity(particleEffect.entity);
                     particleEffect.entity.onLifetimeend = function () {
                         engine.removeEntity(this, function () {
-                            console.log("done");
-                            engine.addEntity(landscape, function () {
-                                landscape.state.constants.init()
+
+                            // Set up Landscape
+
+                            var landscape = new Landscape(timeLine.landscape.start, timeLine.landscape.stop);
+
+                            landscape.entity.onLifetimeend = function () {
+                                engine.removeEntity(this);
+                            };
+
+
+
+
+
+                            engine.addEntity(landscape.entity, function () {
+                                console.log(arguments);
+                                landscape.entity.state.constants.init();
                             });
+
+                         
                         })
                        
                     };
@@ -543,28 +726,15 @@
                   
 
                   
-               //     engine.addEntity(p.entity);
-                
-
-                   // engine.addEntity(new Spectrum(that).entity, function () {
-
-                        //engine.addEntity(landscape, function () {
-                       
-
-
-                        //    engine.start()
-                        //});
-                 //   });;
-
-            //            engine.addEntity(new Spectrum(that).entity);
+          
 
                     engine.start();
                  
 
                 }, function () {
-                    //console.log("doOnTrackEnd");
+                 
                 });
-                ScriptNodePlayer.getInstance().loadMusicFromURL("Gravity.zip", {
+                ScriptNodePlayer.getInstance().loadMusicFromURL("So-Phisticated_III_part_1.zip", {
                     basePath: "assets/sid/"
                 }, function () { });
 
