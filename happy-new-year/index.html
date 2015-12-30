@@ -5,14 +5,20 @@
 
     <style>
         body {
-            margin:0;
+            margin: 0;
             padding: 0;
             overflow: hidden;
+            background:#897acc;
         }
 
-        html {
+        * {
+            -webkit-box-sizing: border-box;
+            -moz-box-sizing: border-box;
+            box-sizing: border-box;
+        }
+
+        html, body {
             height: 100%;
-          
             margin: 0;
             padding: 0;
         }
@@ -25,37 +31,42 @@
             position: absolute;
             margin-left: auto;
             margin-right: auto;
-          
             width: 720px;
             height: 405px;
             padding: 0;
+            left: 50%;
+            top: 50%;
+           margin:-200px 0 0 -360px;
         }
 
         #time {
-            z-index:1050;
+            z-index: 1050;
             position: absolute;
             left: 1em;
             width: 200px;
             top: 1em;
             background: #ff0000;
-            color:#ffffff;
+            color: #ffffff;
             height: 20px;
             padding: 10px;
-            
+            display: none;
         }
-        #freq{
-             z-index:1050;
+
+        #freq {
+            z-index: 1050;
             position: absolute;
             left: 1em;
             width: 200px;
             bottom: 1em;
             background: #ff00ff;
-            color:#ffffff;
+            color: #ffffff;
             height: 20px;
             padding: 10px;
+            display: none;
         }
-        .hide{
-            display:none;
+
+        .hide {
+            display: none;
         }
     </style>
 </head>
@@ -65,22 +76,22 @@
         <canvas id="surface" width="720" height="405"></canvas>
     </div>
 
-   
+
     <script src="../src/noc.engine.latest.js"></script>
     <script src="../libs/sid/scriptProcessor.js"></script>
     <script src="../libs/sid/tinysid.js"></script>
     <script>
-     
+
 
     </script>
 
 
     <script>
 
-    
-      
+
+
         var engine, landscape, assets, analyzer, currentFreq = 0;
-    
+
 
         Particle = function () {
 
@@ -142,7 +153,7 @@
                 this.smoothedAlpha = 0;
                 this.decayScale = 0;
                 this.decayAlpha = 0;
-                this.rotation = random(2* Math.PI);
+                this.rotation = random(2 * Math.PI);
                 return this.energy = 0;
             };
             Particle.prototype.move = function () {
@@ -150,7 +161,7 @@
                 return this.y -= this.speed * this.level;
             };
             Particle.prototype.draw = function (ctx) {
-              
+
                 var alpha, power, scale;
                 power = Math.exp(this.energy);
                 scale = this.scale * power;
@@ -173,8 +184,8 @@
                 ctx.globalAlpha = this.smoothedAlpha / this.level;
                 ctx.strokeStyle = this.color;
                 ctx.stroke();
-               
-                 ctx.restore();
+
+                ctx.restore();
             };
             return Particle;
         }();
@@ -192,7 +203,7 @@
 
         // Particle / Pills entity
         var Pills = (function () {
-            var ctor = function (start,stop,source, num) {
+            var ctor = function (start, stop, source, num) {
                 var bgAnalyzer = analyzer || source;
                 this.particles = [];
                 for (i = j = 0, ref = num - 1; j <= ref; i = j += 1) {
@@ -215,7 +226,7 @@
                     var update = function (bands) {
                         for (k = 0, len = ref.length; k < len; k++) {
                             particle = ref[k];
-                           particle.energy = bands[particle.band] / 256;
+                            particle.energy = bands[particle.band] / 256;
                         }
                     }
                     update(array);
@@ -228,24 +239,24 @@
                             particle.x = random(render.width);
                             particle.y = render.height + particle.size * particle.scale * particle.level;
                         }
-                       particle.move();
-                       particle.draw(ctx);
+                        particle.move();
+                        particle.draw(ctx);
                     };
 
-                }, start, start+stop).init({
+                }, start, start + stop).init({
                     particles: this.particles
                 });
-                
+
 
             };
             return ctor;
         }
-      
+
         )();
 
-         /// Plasma entity
+        /// Plasma entity
         var Plasma = (function () {
-            var ctor = function (start,stop) {
+            var ctor = function (start, stop) {
                 var rad = Math.PI / 180;
                 this.entity = new Noc.Entity("plasma", function (renderer) {
                     var state = this.state;
@@ -284,7 +295,7 @@
 
                     }
 
-                },start, stop).init(
+                }, start, stop).init(
                     {
                         res: 48,
                         aa: 0,
@@ -304,14 +315,14 @@
 
                     });
 
-             
+
             };
             return ctor;
-           
+
         })();
 
 
-      
+
 
 
 
@@ -329,7 +340,7 @@
                     ctx.fillStyle = "rgba(255, 255, 255, " + alpha + ")";
                     ctx.fillText(text, width / 2 -
                         (ctx.measureText(text).width) / 2
-                        , height / 2 + (state.alpha * (500/2)));
+                        , height / 2 + (state.alpha * (500 / 2)));
                     state.alpha -= frameTime * currentFreq / 200;
                     if (state.p < state.textBlocks.length - 1) {
                         if (state.alpha < 0) {
@@ -346,7 +357,9 @@
             };
             return ctor;
         })();
-     
+
+
+
 
 
         document.addEventListener("DOMContentLoaded", function () {
@@ -355,21 +368,22 @@
             // load the textures.
             // TODO: should use the Perlin Noise lib to generate heightmap instad
             assets = new Noc.Assets({
-                images: ["assets/hm.jpg", "assets/tex03.jpg","assets/fakescroller.png"]
+                images: ["assets/hm.jpg", "assets/tex03.jpg", "assets/fakescroller.png", "assets/happy-new.jpg"]
             }, function () {
-               
-            heightmap = imageDataToArrayR(assets.getImageData("assets/hm.jpg"));
-            texture = assets.getImageData("assets/tex03.jpg");
-            main();
+
+                heightmap = imageDataToArrayR(assets.getImageData("assets/hm.jpg"));
+                texture = assets.getImageData("assets/tex03.jpg");
+                main();
             });
 
 
 
             // story
             var timeLine = {
-                strobe:{
-                    start:1,
-                    stop:31000,
+
+                strobe: {
+                    start: 1,
+                    stop: 31000,
                 },
                 fade: {
                     start: 500,
@@ -391,12 +405,17 @@
                     start: 80000,
                     stop: 60000
                 }
+                , happyNew: {
+                    start: 80000 + 6000,
+                    stop: 90000
+
+                },
             }
 
             engine = new Noc.Engine("#surface", null, $("#wrapper"));
 
 
-            engine.onFrame = function (tm,timer) {
+            engine.onFrame = function (tm, timer) {
                 //  console.log(arguments);
                 document.querySelector("#time").textContent = (tm / 1000).toFixed(2);//.elapsed;
 
@@ -405,18 +424,17 @@
                     var array = new Uint8Array(analyzer.frequencyBinCount);
                     analyzer.getByteFrequencyData(array);
                     var freq = floor((array.reduce(function (a, b) { return a + b })) / array.length);
-                    if (freq > 50 & freq < 60 ) {
-                    
+                    if (freq > 50 & freq < 60) {
+
                         document.querySelector("#freq").textContent = floor(freq);
                         document.querySelector("#freq").classList.remove("hide");
-                    }else
-                    {
+                    } else {
                         document.querySelector("#freq").classList.add("hide");
                     }
 
                     currentFreq = freq;
-                   
-                  
+
+
                 };
 
             };
@@ -424,21 +442,35 @@
                 engine.stop();
             });
 
-            
+            var HappyNew = (function () {
+
+                var ctor = function (start, stop, image) {
+                    this.entity = new Noc.Entity("edwin", function (renderer) {
+                        var ctx = renderer.ctx;
+                        var img = this.state.img;
+                        ctx.drawImage(img, renderer.width / 2 - (img.width / 2), renderer.height / 2 - (img.height) / 2, img.width, img.height);
+
+
+                    }, start, stop).setState({
+                        img: image
+                    });
+                };
+                return ctor;
+            })();
 
 
             // Scroller entiry
             var Scroller = (function () {
                 var ctor = function (start, stop, image) {
                     this.entity = new Noc.Entity("oldScroller", function (renderer) {
-                            var img = this.state.image;
-                            var ctx = renderer.ctx;
-                            ctx.drawImage(img, renderer.width - Math.abs(this.state.vx), renderer.height - (image.height-10), img.width, img.height);
-                            if (Math.abs(this.state.vx) > (img.width *2)) {
-                                this.state.vx = 0;
-                            }
-                            this.state.vx -= 5;
-                    },start, stop).setState({
+                        var img = this.state.image;
+                        var ctx = renderer.ctx;
+                        ctx.drawImage(img, renderer.width - Math.abs(this.state.vx), renderer.height - (image.height - 10), img.width, img.height);
+                        if (Math.abs(this.state.vx) > (img.width * 2)) {
+                            this.state.vx = 0;
+                        }
+                        this.state.vx -= 5;
+                    }, start, stop).setState({
                         vx: 0,
                         image: image
                     });
@@ -449,7 +481,7 @@
 
             var Strobe = (function () {
 
-                var ctor = function (start, stop,num) {
+                var ctor = function (start, stop, num) {
                     var arrPos = [];
 
 
@@ -460,25 +492,25 @@
                         });
                     };
 
-                    this.entity = new Noc.Entity("stobe", function (renderer,ts,tm) {
+                    this.entity = new Noc.Entity("stobe", function (renderer, ts, tm) {
                         var ctx = renderer.ctx;
                         var state = this.state;
                         if (!analyzer) return;
                         var width = renderer.width;
                         var height = renderer.height;
                         ctx.globalAlpha = 0.5;
-                      //  if ((currentFreq > 50 && currentFreq < 80)) {
-                          
-                            for (var i=0 ; i < state.strobes-1; i++) {
-                                var p = state.strobePos[i];
-                                ctx.beginPath();
-                                ctx.arc(p.x, p.y, currentFreq*2, 0, 2 * Math.PI);
-                                ctx.fillStyle = "rgba(255,255,0,0.03)";
-                                ctx.fill();
-                            };
-                      //  };
+                        //  if ((currentFreq > 50 && currentFreq < 80)) {
 
-                  
+                        for (var i = 0 ; i < state.strobes - 1; i++) {
+                            var p = state.strobePos[i];
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, currentFreq * 2, 0, 2 * Math.PI);
+                            ctx.fillStyle = "rgba(255,255,0,0.03)";
+                            ctx.fill();
+                        };
+                        //  };
+
+
 
                     }, start, stop).setState({
                         strobes: num,
@@ -597,7 +629,7 @@
 
 
 
-                    }, start,stop).init(
+                    }, start, stop).init(
                     {
 
                         buffers: [{
@@ -655,8 +687,14 @@
 
                     analyzer = that._analyzerNode
 
+                    var outro = new HappyNew(timeLine.happyNew.start, timeLine.happyNew.stop, assets.getImage("assets/happy-new.jpg"));
 
-                    fade = new TextFade(timeLine.fade.start,timeLine.fade.stop);
+                    console.log(outro.entity);
+
+                    engine.addEntity(outro.entity);
+
+
+                    fade = new TextFade(timeLine.fade.start, timeLine.fade.stop);
                     fade.entity.onLifetimeend = function () {
                         engine.removeEntity(this);
                     };
@@ -679,7 +717,7 @@
                         assets.getImage("assets/fakescroller.png"));
 
                     scroller.entity.onLifetimeend = function () {
-                     
+
                         engine.removeEntity(this);
                     };
                     engine.addEntity(scroller.entity);
@@ -689,13 +727,13 @@
                     plasma = new Plasma(timeLine.plasma.start, timeLine.plasma.stop);
                     plasma.entity.onLifetimeend = function () {
                         engine.removeEntity(this);
-                      
+
                     };
                     engine.addEntity(plasma.entity);
 
 
                     // Setup Particles
-                    var particleEffect = new Pills(timeLine.particles.start, timeLine.particles.stop, that,64); // Where that is the SID
+                    var particleEffect = new Pills(timeLine.particles.start, timeLine.particles.stop, that, 64); // Where that is the SID
                     engine.addEntity(particleEffect.entity);
                     particleEffect.entity.onLifetimeend = function () {
                         engine.removeEntity(this, function () {
@@ -713,40 +751,40 @@
 
 
                             engine.addEntity(landscape.entity, function () {
-                                console.log(arguments);
+
                                 landscape.entity.state.constants.init();
                             });
 
-                         
+
                         })
-                       
+
                     };
 
 
-                  
 
-                  
-          
+
+
+
 
                     engine.start();
-                 
+
 
                 }, function () {
-                 
+
                 });
-                ScriptNodePlayer.getInstance().loadMusicFromURL("So-Phisticated_III_part_1.zip", {
+                ScriptNodePlayer.getInstance().loadMusicFromURL("Ennio_Morricone.zip", {
                     basePath: "assets/sid/"
                 }, function () { });
 
-               
-        //    });
 
-         
+                //    });
+
+
 
             }
 
             // when the sig is loaded. add the spectrum
-           
+
 
 
 
