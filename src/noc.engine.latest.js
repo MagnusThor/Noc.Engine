@@ -4,6 +4,83 @@
         window.setTimeout(callback, 1000 / 60);
     };
 })();
+
+// todo: move to Utils
+
+var imageToImageData = function (image) {
+    var canvas = document.createElement('canvas');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    var context = canvas.getContext("2d");
+    context.drawImage(image, 0, 0);
+    return context.getImageData(0, 0, image.width, image.height);
+};
+
+var imageDataToArrayR = function (imageData) {
+    var temp = {
+        width: imageData.width,
+        height: imageData.height,
+        data: []
+    };
+    for (var i = 0; i < imageData.data.length / 4; i++) {
+        temp.data[i] = imageData.data[i * 4];
+    }
+    return temp;
+};
+var imageDataToArray = function (imageData) {
+    var temp = {
+        width: imageData.width,
+        height: imageData.height,
+        data: []
+    };
+    for (var i = 0; i < imageData.data.length; i++) {
+        temp.data[i] = imageData.data[i];
+    }
+    return temp;
+};
+
+
+
+function isArray(object) {
+
+    return Object.prototype.toString.call(object) == '[object Array]';
+}
+
+function isFunction(object) {
+
+    return typeof object == 'function';
+}
+
+function isNumber(object) {
+
+    return typeof object == 'number';
+}
+
+function isString(object) {
+
+    return typeof object == 'string';
+}
+
+
+function random(min, max) {
+
+    if (isArray(min))
+
+        return min[~~(Math.random() * min.length)];
+
+    if (!isNumber(max))
+
+        max = min || 1, min = 0;
+
+    return min + Math.random() * (max - min);
+};
+
+var floor = function (d) {
+    return Math.floor(d);
+}
+
+
+
 var Noc = {
     Timer: {},
     Utils: {

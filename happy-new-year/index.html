@@ -1,0 +1,593 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+
+    <style>
+        body {
+            margin:0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        canvas {
+            background: #000;
+        }
+
+        #wrapper {
+            position: absolute;
+            margin-left: auto;
+            margin-right: auto;
+          
+            width: 100%;
+            height: 100%;
+            padding: 0;
+        }
+
+        #time {
+            z-index:1050;
+            position: absolute;
+            left: 1em;
+            width: 200px;
+            top: 1em;
+            background: #ff0000;
+            color:#ffffff;
+            height: 20px;
+            padding: 10px;
+            
+        }
+    </style>
+</head>
+<body>
+    <div id="time"></div>
+    <div id="wrapper">
+        <canvas id="surface" width="720" height="405"></canvas>
+    </div>
+
+   
+    <script src="../src/noc.engine.latest.js"></script>
+    <script src="../libs/sid/scriptProcessor.js"></script>
+    <script src="../libs/sid/tinysid.js"></script>
+    <script>
+     
+
+    </script>
+
+
+    <script>
+
+    
+      
+        var engine, landscape, assets;
+    
+
+        Particle = function () {
+
+
+            SCALE = {
+                MIN: 5,
+                MAX: 80
+            };
+            SPEED = {
+                MIN: 0.2,
+                MAX: 1
+            };
+            ALPHA = {
+                MIN: 0.8,
+                MAX: 0.9
+            };
+            SPIN = {
+                MIN: 0.001,
+                MAX: 0.005
+            };
+            SIZE = {
+                MIN: 0.5,
+                MAX: 1.25
+            };
+            COLORS = [
+                '#69D2E7',
+                '#1B676B',
+                '#BEF202',
+                '#EBE54D',
+                '#00CDAC',
+                '#1693A5',
+                '#F9D423',
+                '#FF4E50',
+                '#E7204E',
+                '#0CCABA',
+                '#FF006F'
+            ];
+
+
+
+            function Particle(x1, y1) {
+                this.x = x1 != null ? x1 : 0;
+                this.y = y1 != null ? y1 : 0;
+                this.reset();
+            }
+            Particle.prototype.reset = function () {
+                this.level = 1 + floor(random(4));
+                this.scale = random(SCALE.MIN, SCALE.MAX);
+                this.alpha = random(ALPHA.MIN, ALPHA.MAX);
+                this.speed = random(SPEED.MIN, SPEED.MAX);
+                this.color = random(COLORS);
+                this.size = random(SIZE.MIN, SIZE.MAX);
+                this.spin = random(SPIN.MAX, SPIN.MAX);
+                this.band = floor(random(128));
+                if (random() < 0.5) {
+                    this.spin = -this.spin;
+                }
+                this.smoothedScale = 0;
+                this.smoothedAlpha = 0;
+                this.decayScale = 0;
+                this.decayAlpha = 0;
+                this.rotation = random(2* Math.PI);
+                return this.energy = 0;
+            };
+            Particle.prototype.move = function () {
+                this.rotation += this.spin;
+                return this.y -= this.speed * this.level;
+            };
+            Particle.prototype.draw = function (ctx) {
+              
+                var alpha, power, scale;
+                power = Math.exp(this.energy);
+                scale = this.scale * power;
+                alpha = this.alpha * this.energy * 1.5;
+                this.decayScale = Math.max(this.decayScale, scale);
+                this.decayAlpha = Math.max(this.decayAlpha, alpha);
+                this.smoothedScale += (this.decayScale - this.smoothedScale) * 0.3;
+                this.smoothedAlpha += (this.decayAlpha - this.smoothedAlpha) * 0.3;
+                this.decayScale *= 0.985;
+                this.decayAlpha *= 0.975;
+                ctx.save();
+                ctx.beginPath();
+                ctx.translate(this.x + Math.cos(this.rotation * this.speed) * 250, this.y);
+                ctx.rotate(this.rotation);
+                ctx.scale(this.smoothedScale * this.level, this.smoothedScale * this.level);
+                ctx.moveTo(this.size * 0.5, 0);
+                ctx.lineTo(this.size * -0.5, 0);
+                ctx.lineWidth = 1;
+                ctx.lineCap = 'round';
+                ctx.globalAlpha = this.smoothedAlpha / this.level;
+                ctx.strokeStyle = this.color;
+                ctx.stroke();
+               
+                 ctx.restore();
+            };
+            return Particle;
+        }();
+
+        var s = 0;
+        var q = 300
+        var pos = [];
+        for (var i = 0; i < 9; i++) {
+            pos.push({
+                x: Math.floor((Math.random() * 800) + 1),
+                y: Math.floor((Math.random() * 800) + 1)
+            });
+        }
+
+
+        var Pills = (function () {
+         
+            var ctor = function (source, num) {
+
+                var bgAnalyzer = source._analyzerNode;
+                // set up particles
+                this.particles = [];
+                for (i = j = 0, ref = num - 1; j <= ref; i = j += 1) {
+
+                    var x = random(this.width);
+                    var y = random(this.height * 2);
+
+
+                 
+
+                    particle = new Particle(x, y);
+                    particle.energy = random(particle.band / 256);
+                    this.particles.push(particle);
+                };
+
+
+                this.entity = new Noc.Entity("particles", function (render) {
+                    var j, len, particle, ref, results;
+                    var ctx = render.ctx;
+                    ctx.globalCompositeOperation = 'lighter';
+                    var array = new Uint8Array(bgAnalyzer.frequencyBinCount);
+                    bgAnalyzer.getByteFrequencyData(array);
+
+                    ref = this.state.particles;
+                    var update = function (bands) {
+                        for (k = 0, len = ref.length; k < len; k++) {
+                            particle = ref[k];
+                           particle.energy = bands[particle.band] / 256;
+                        }
+                    }
+                    update(array);
+
+
+                    for (j = 0, len = ref.length; j < len; j++) {
+                        particle = ref[j];
+                        if (particle.y < -particle.size * particle.level * particle.scale * 2) {
+                            particle.reset();
+                            particle.x = random(render.width);
+                            particle.y = render.height + particle.size * particle.scale * particle.level;
+                        }
+                       particle.move();
+                       particle.draw(ctx);
+                    };
+
+                }, 11000, 11000 + 5000).init({
+                    particles: this.particles
+                });
+                
+
+            };
+            return ctor;
+        }
+      
+        )();
+
+        var Spectrum = (function () {
+            var ctor = function (source) {
+                var bgAnalyzer = source._analyzerNode;
+                this.entity = new Noc.Entity("spectrum", function (viewport,tfs,fm) {
+                    var ctx = viewport.ctx;
+                    var array = new Uint8Array(bgAnalyzer.frequencyBinCount);
+                    bgAnalyzer.getByteFrequencyData(array);
+                    if (array.length > 1) {
+                        var a = array.slice(1, 9)
+                    for (var i = 0; i < (a.length) ; i++) {
+                        var value = a[i];
+                        if (value > 1) {
+                            o = value;
+                            var p = pos[i];
+                            ctx.beginPath();
+                            ctx.arc(p.x,p.y, (value), s, 2 * Math.PI);
+                            ctx.fillStyle = "rgba(0," + value+  ",0, " +  127 / value + ")";
+                            ctx.fill();
+                            if (q > 50) {
+                                q -= tfs;
+                            }
+                        }
+                    }
+                    }
+
+                }, 10
+                );
+            };
+            return ctor;
+        })();
+
+
+
+
+     
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+
+            // load the textures.
+            // TODO: should use the Perlin Noise lib to generate heightmap instad
+            assets = new Noc.Assets({
+                images: ["assets/hm.jpg", "assets/tex03.jpg","assets/fakescroller.png"]
+            }, function () {
+
+
+
+              
+               
+                heightmap = imageDataToArrayR(assets.getImageData("assets/hm.jpg"));
+                texture = assets.getImageData("assets/tex03.jpg");
+
+
+                main();
+
+
+              
+
+            });
+
+
+            engine = new Noc.Engine("#surface", null, $("#wrapper"));
+
+
+            engine.onFrame = function (tm,timer) {
+                //  console.log(arguments);
+
+                document.querySelector("#time").textContent = (tm / 1000).toFixed(2);//.elapsed;
+              
+            };
+
+            document.querySelector("#time").addEventListener("click", function () {
+                engine.stop();
+            });
+
+            //// Moving background 
+            //var sky = new Noc.Entity("sky", function (viewport) {
+            //    var img = this.state.sky;
+            //    var ctx = viewport.ctx;
+            //    ctx.drawImage(img, this.state.vx, 0, img.width, viewport.height);
+            //    ctx.drawImage(img, viewport.width - Math.abs(this.state.vx), 0, img.width, viewport.height);
+            //    if (Math.abs(this.state.vx) > img.width) {
+            //        this.state.vx = 0;
+            //    }
+            //    this.state.vx -= 10;
+            //});
+            //sky.init({
+            //    vx: 0,
+            //    sky: assets.getImage("/assets/images/mavri-summit.jpg")
+            //}, 16000);
+
+
+            var Scroller = (function () {
+
+
+                var ctor = function (image) {
+                    this.entity = new Noc.Entity("oldScroller", function (renderer) {
+
+                            var img = this.state.image;
+                            var ctx = renderer.ctx;
+                       
+                            ctx.drawImage(img, renderer.width - Math.abs(this.state.vx), renderer.height - (image.height), img.width, img.height);
+                            if (Math.abs(this.state.vx) > (img.width *2)) {
+                                this.state.vx = 0;
+                            }
+                            this.state.vx -= 5;
+
+                    },500,14999).setState({
+                        vx: 0,
+                        image: image
+                    });
+                };
+
+                return ctor;
+
+            })();
+
+
+
+            var main = function () {
+                // set up buffer
+                offscreenCanvas = document.createElement('canvas');
+                offscreenCanvas.width = 160;
+                offscreenCanvas.height = 100;;
+                offscreenContext = offscreenCanvas.getContext("2d");
+
+
+                // Create a landscape
+                landscape = new Noc.Entity("elevated", function (render, tfs, tm) {
+
+                var onscreenContext = render.ctx;
+                var offscreenContext = this.state.buffers[0].context;
+                var frame = this.state.frame;
+                var constants = this.state.constants;
+                var position = this.state.position;
+
+                offscreenContext.fillStyle = "rgba(" + constants.color.fog[0] + "," + constants.color.fog[1] + "," + constants.color.fog[2] +",0.4)";
+                offscreenContext.fillRect(0, 0, constants.screen.width, constants.screen.height);
+
+                frame = offscreenContext.getImageData(0, 0, constants.screen.width, constants.screen.height);
+
+                var image = frame.data;
+
+                var doff = constants.pov.depthOfField / 1;
+                var c1 = constants.screen.height / 2;
+                var c2 = constants.screen.distance * position.z;
+
+                for (var i = 0; i < constants.screen.width; i++) {
+                    var orientation = position.a - constants.pov.horizontalOpening * (1 - i * 2 / constants.screen.width);
+                    var progression = { x: Math.cos(orientation), y: Math.sin(orientation) };
+
+                    var distanceProbed = 0;
+                    var screenProjectedTop = 0;
+                    var oldHeight = 0;
+                    var oldRenderCache = false;
+                    var summit = false;
+
+                    while (distanceProbed < constants.pov.depthOfField && screenProjectedTop < constants.screen.height) {
+                     
+                        distanceProbed += (distanceProbed < doff) ? 2 : (distanceProbed < 2 * doff) ? 4 : (distanceProbed < 3 * doff) ? 8 : 16;
+                        var probe = { 
+                            x: Math.abs(Math.ceil(position.x + distanceProbed * progression.x)),
+                            y: Math.abs(Math.ceil(position.y + distanceProbed * progression.y))
+                        };
+                        var dataIndex = heightmap.width * (probe.y % heightmap.height) + (probe.x % heightmap.width);
+
+                     
+                        var height = heightmap.data[dataIndex];
+                        if (height < oldHeight) {
+                            oldHeight = height;
+                            continue;
+                        }
+                        oldHeight = height;
+
+                        var projectedHeight = Math.min(Math.ceil(c1 - (c2 - constants.screen.distance * height) / distanceProbed), constants.screen.height);
+
+                       
+                        if (projectedHeight > screenProjectedTop) {
+                            var textureDataIndex = (texture.width * (probe.y % texture.height) + (probe.x % texture.width)) * 4;
+                            var textureCache = [texture.data[textureDataIndex], texture.data[textureDataIndex + 1], texture.data[textureDataIndex + 2]];
+
+                            var fillGoal = Math.max(constants.screen.height - projectedHeight, 0);
+                            var fogFactor = Math.min(distanceProbed, constants.pov.depthOfField) / constants.pov.depthOfField;
+                            var invFogFactor = (1 - fogFactor);
+
+                           
+                            var renderCache = {
+                                r: invFogFactor * textureCache[0] + fogFactor * constants.color.fog[0],
+                                g: invFogFactor * textureCache[1] + fogFactor * constants.color.fog[1],
+                                b: invFogFactor * textureCache[2] + fogFactor * constants.color.fog[2]
+                            };
+                            oldRenderCache = renderCache;
+                            // render
+                            for (var j = (constants.screen.height - screenProjectedTop) ; j > fillGoal; j--) {
+                                image[(i + j * constants.screen.width) * 4] = Math.ceil(renderCache.r);
+                                image[(i + j * constants.screen.width) * 4 + 1] = Math.ceil(renderCache.g);
+                                image[(i + j * constants.screen.width) * 4 + 2] = Math.ceil(renderCache.b);
+                                image[(i + j * constants.screen.width) * 4 + 3] = 255;
+                            }
+                            screenProjectedTop = projectedHeight;
+                            summit = false;
+                        } else if (screenProjectedTop > projectedHeight) {
+                            summit = true;
+                        }
+                    }
+
+                    // 3) if the top is lower than the top of the screen we fill it
+                    if (position.antialiasing) {
+                        if ((constants.screen.height - screenProjectedTop + 1) >= 0) {
+                            var j = (i + (constants.screen.height - screenProjectedTop + 1) * constants.screen.width) * 4;
+                            image[j] = Math.ceil(0.5 * image[j] + 0.5 * constants.color.fog[0]);
+                            image[j + 1] = Math.ceil(0.5 * image[j + 1] + 0.5 * constants.color.fog[1]);
+                            image[j + 2] = Math.ceil(0.5 * image[j + 2] + 0.5 * constants.color.fog[2]);
+                        }
+                    }
+                }
+                frame.data = image;
+                offscreenContext.putImageData(frame, 0, 0);
+                onscreenContext.drawImage(offscreenCanvas, 0, 0, render.width, render.height);
+                position.y += 5;
+          
+              
+
+
+
+            },15000).init(
+                    {
+               
+                        buffers: [{
+                            canvas: offscreenCanvas,
+                            context: offscreenContext
+                        }],
+                        frame: offscreenContext.getImageData(0, 0, 160, 100),
+
+                        constants:
+                    {
+
+                        highres: true,
+                        screen: {
+                            height: 100,
+                            width: 160,
+                            zoom: 8
+                        },
+
+                        pov: {
+                            verticalOpening: 0.4,
+                            depthOfField: 1000
+                        },
+
+                        color: {
+                            fog: [250, 250, 250, 0.1]
+                        },
+
+                        init: function () {
+                  
+                            this.pov.horizontalOpening = Math.atan(this.pov.verticalOpening) * this.screen.width / this.screen.height;
+                            this.screen.distance = this.screen.width / 2 / Math.tan(this.pov.horizontalOpening);
+                        }
+                    },
+                        position :{
+                            x: 450,
+                            y: 0,
+                            z: 200,
+                            a: Math.PI / 2,
+                            antialiasing: false
+                        },
+                    });
+
+
+      
+
+           
+
+
+                ScriptNodePlayer.createInstance(new SIDBackendAdapter(), "", [], true, function () { }, function () {
+                    this.play();
+
+                    var that = this;
+
+
+                    var scroller = new Scroller(assets.getImage("assets/fakescroller.png"));
+
+                    engine.addEntity(scroller.entity);
+
+
+                    scroller.entity.onLifetimeend = function () {
+                        engine.removeEntity(this);
+                    };
+
+
+                    var particleEffect = new Pills(that, 64);
+
+                    engine.addEntity(particleEffect.entity);
+                    particleEffect.entity.onLifetimeend = function () {
+                        engine.removeEntity(this, function () {
+                            console.log("done");
+                            engine.addEntity(landscape, function () {
+                                landscape.state.constants.init()
+                            });
+                        })
+                       
+                    };
+
+
+                  
+
+                  
+               //     engine.addEntity(p.entity);
+                
+
+                   // engine.addEntity(new Spectrum(that).entity, function () {
+
+                        //engine.addEntity(landscape, function () {
+                       
+
+
+                        //    engine.start()
+                        //});
+                 //   });;
+
+            //            engine.addEntity(new Spectrum(that).entity);
+
+                    engine.start();
+                 
+
+                }, function () {
+                    //console.log("doOnTrackEnd");
+                });
+                ScriptNodePlayer.getInstance().loadMusicFromURL("Gravity.zip", {
+                    basePath: "assets/sid/"
+                }, function () { });
+
+               
+        //    });
+
+         
+
+            }
+
+            // when the sig is loaded. add the spectrum
+           
+
+
+
+
+        });
+
+        window.onerror = function () {
+            engine.stop();
+        };
+
+    </script>
+
+</body>
+</html>

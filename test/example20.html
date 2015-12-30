@@ -49,6 +49,8 @@
 
    
     <script src="../src/noc.engine.latest.js"></script>
+    <script src="../libs/sid/scriptProcessor.js"></script>
+    <script src="../libs/sid/tinysid.js"></script>
     <script>
      
 
@@ -57,7 +59,63 @@
 
     <script>
 
-        var engine, landscape,assets;
+        var s = 225;
+
+        var engine, landscape, assets;
+
+        var Spectrum = (function () {
+            var ctor = function (source) {
+                var bgAnalyzer = source._analyzerNode;
+                this.entity = new Noc.Entity("spectrum", function (viewport) {
+
+                    var ctx = viewport.ctx;
+                    var array = new Uint8Array(bgAnalyzer.frequencyBinCount);
+                    bgAnalyzer.getByteFrequencyData(array);
+
+                    if (array.length > 1) {
+
+                        var a = array.slice(1, 3)
+
+                    //    console.log(a);
+                    
+                    for (var i = 0; i < (a.length) ; i++) {
+                        var value = a[i];
+                        if (value > 1) {
+
+                            
+                            o = value;
+
+
+                            ctx.beginPath();
+                            ctx.moveTo((viewport.width / 2) ,viewport.height );
+                            ctx.lineTo(viewport.width - ( value * 2), 0);
+                            ctx.fillStyle = "rgba(127,127,127,.5)";
+                            ctx.lineTo(viewport.width / 2 + ( value ), 0);
+                            ctx.fill();
+
+
+                            ctx.beginPath();
+                            ctx.moveTo((viewport.width / 2), viewport.height );
+                            ctx.lineTo(0, 0);
+                            ctx.fillStyle = "rgba(127,127,127,.5)";
+                            ctx.lineTo(0 + (value), 0);
+                            ctx.fill();
+
+
+                           
+                            //ctx.fillRect(i, ((viewport.height) - value * 2), 20, viewport.height);
+                        }
+                      
+                    }
+                    }
+
+                }, 10
+                );
+            };
+            return ctor;
+        })();
+
+
 
 
         // move to Noc.Utils
@@ -102,7 +160,7 @@
             // load the textures.
             // TODO: should use the Perlin Noise lib to generate heightmap instad
             assets = new Noc.Assets({
-                images: ["assets/hm.jpg", "assets/map.jpg"]
+                images: ["assets/hm.jpg", "assets/tex03.jpg"]
             }, function () {
 
 
@@ -110,7 +168,7 @@
               
                
                 heightmap = imageDataToArrayR(assets.getImageData("assets/hm.jpg"));
-                texture = assets.getImageData("assets/map.jpg");
+                texture = assets.getImageData("assets/tex03.jpg");
 
 
                 main();
@@ -132,12 +190,12 @@
                 offscreenCanvas.height = 100;;
                 offscreenContext = offscreenCanvas.getContext("2d");
 
-            
-
 
            
-            landscape = new Noc.Entity("elevated", function (render,a,b) {
+            landscape = new Noc.Entity("elevated", function (render,tfs,tm) {
 
+
+                var delta = (tm / 1000) + (1 / (5) + tfs);
 
                
 
@@ -147,14 +205,14 @@
                 var constants = this.state.constants;
                 var position = this.state.position;
 
-                offscreenContext.fillStyle = "rgba(" + constants.color.fog[0] + "," + constants.color.fog[1] + "," + constants.color.fog[2] + ",0.5)";
+                offscreenContext.fillStyle = "rgba(" + constants.color.fog[0] + "," + constants.color.fog[1] + "," + constants.color.fog[2] +",0.4)";
                 offscreenContext.fillRect(0, 0, constants.screen.width, constants.screen.height);
 
                 frame = offscreenContext.getImageData(0, 0, constants.screen.width, constants.screen.height);
 
                 var image = frame.data;
 
-                var doff = constants.pov.depthOfField / 4;
+                var doff = constants.pov.depthOfField / 1;
                 var c1 = constants.screen.height / 2;
                 var c2 = constants.screen.distance * position.z;
 
@@ -244,8 +302,8 @@
              //   position.a = Math.cos(a) * 10;
 
 
-                position.y += 0.5;
-                position.x += 1.5;
+                position.y += 4.9;
+              //position.a += delta;
               
 
 
@@ -266,7 +324,7 @@
                 screen: {
                     height: 100,
                     width: 160,
-                    zoom: 1
+                    zoom: 8
                 },
 
                 pov: {
@@ -287,24 +345,54 @@
                 position :{
                     x: 450,
                     y: 0,
-                    z: 180,
+                    z: 200,
                     a: Math.PI / 2,
                     antialiasing: false
                 },
-              
             });
 
+
+      
 
            
 
-            engine.addEntity(landscape, function () {
-                landscape.state.constants.init()
-                engine.start()
-            });
+
+                ScriptNodePlayer.createInstance(new SIDBackendAdapter(), "", [], true, function () { }, function () {
+                    this.play();
+
+                    var that = this;
+
+                   // engine.addEntity(new Spectrum(that).entity, function () {
+
+                        engine.addEntity(landscape, function () {
+                            landscape.state.constants.init()
+
+
+                            engine.start()
+                        });
+                 //   });;
+
+                        engine.addEntity(new Spectrum(that).entity);
+
+                 
+
+                }, function () {
+                    //console.log("doOnTrackEnd");
+                });
+                ScriptNodePlayer.getInstance().loadMusicFromURL("So-Phisticated_III_part_1.zip", {
+                    basePath: "/assets/sid/"
+                }, function () { });
+
+               
+        //    });
 
          
 
             }
+
+            // when the sig is loaded. add the spectrum
+           
+
 
 
 
